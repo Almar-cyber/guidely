@@ -371,7 +371,7 @@ function buildAnatomySlide(
   mockup.strokeWeight = 1
   const mockLabel = makeText('Inserir mockup\nanotado', 13, FONTS.regular, COLORS.textSecondary)
   mockLabel.textAlignHorizontal = 'CENTER'
-  mockLabel.x = (240 - mockLabel.width) / 2
+  mockLabel.x = 72
   mockLabel.y = (480 - 50) / 2
   mockup.appendChild(mockLabel)
   mockup.x = SLIDE_WIDTH - PAD.slideH - 240
@@ -559,7 +559,7 @@ function buildUseCaseSlide(
   mockup.strokeWeight = 1
   const mockLabel = makeText('Inserir tela\ndo CDU', 13, FONTS.regular, COLORS.textSecondary)
   mockLabel.textAlignHorizontal = 'CENTER'
-  mockLabel.x = (260 - mockLabel.width) / 2
+  mockLabel.x = 82
   mockLabel.y = (520 - 50) / 2
   mockup.appendChild(mockLabel)
   mockup.x = SLIDE_WIDTH - PAD.slideH - 260
@@ -684,7 +684,7 @@ function buildBehaviorSlide(
   mockup.strokeWeight = 1
   const mockLabel = makeText('Inserir tela\nexemplo', 13, FONTS.regular, COLORS.textSecondary)
   mockLabel.textAlignHorizontal = 'CENTER'
-  mockLabel.x = (260 - mockLabel.width) / 2
+  mockLabel.x = 82
   mockLabel.y = (520 - 50) / 2
   mockup.appendChild(mockLabel)
   mockup.x = SLIDE_WIDTH - PAD.slideH - 260
@@ -952,6 +952,10 @@ export async function buildGuideline(data: GuidelineData): Promise<void> {
       case 'contact':
         frame = buildContactSlide(slide, data.title, i, slideNum++)
         break
+      default:
+        // Fix #6 — skip unknown slide types gracefully
+        console.warn(`[Guidely] Tipo de slide desconhecido: ${(slide as { type: string }).type}`)
+        return
     }
 
     page.appendChild(frame)

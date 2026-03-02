@@ -1,5 +1,16 @@
 export const config = { runtime: 'edge' }
 
+const ALLOWED_ORIGINS = ['https://www.figma.com', 'null']
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') ?? ''
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : 'null'
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Anthropic-Key',
+  }
+}
+
 const CONTENT_PAGE_SKIP = /^(↓|←|→|↑|--|==|MASTER|COMPONENT|LIBRARY|\s*$)/i
 
 interface FigmaNode {
@@ -103,7 +114,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(req),
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
       },
@@ -119,7 +130,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!referenceFileId && !destinationFileId) {
     return new Response(JSON.stringify({ error: 'Informe ao menos um arquivo Figma.' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
     })
   }
 
@@ -144,7 +155,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ context }), {
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(req),
       },
     })
   } catch (err) {
@@ -153,7 +164,7 @@ export default async function handler(req: Request): Promise<Response> {
       status: 400,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders(req),
       },
     })
   }

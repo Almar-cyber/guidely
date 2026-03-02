@@ -93,8 +93,12 @@ export default function App() {
     return () => window.removeEventListener('message', handler)
   }, [])
 
+  // Fix #13 — throttle scroll via rAF to avoid jank during streaming
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const id = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(id)
   }, [messages, streamingText])
 
   // ── Save credentials & proceed ──
@@ -114,32 +118,39 @@ export default function App() {
   const handleAnalyze = async () => {
     const refId = extractFileId(refUrl) ?? undefined
     const destId = extractFileId(destUrl) ?? undefined
+
+    // Fix #3 — validate URL format before sending
+    if (refUrl.trim() && !refId) {
+      setAnalyzeError('URL de referência inválida. Copie diretamente do Figma (deve conter figma.com/design/ ou figma.com/file/).')
+      return
+    }
+    if (destUrl.trim() && !destId) {
+      setAnalyzeError('URL de destino inválida. Copie diretamente do Figma (deve conter figma.com/design/ ou figma.com/file/).')
+      return
+    }
     if (!refId && !destId) {
       setAnalyzeError('Cole ao menos uma URL de arquivo Figma.')
       return
     }
+
     setAnalyzeError('')
     setStep('analyzing')
     try {
+      // Fix #7 — status reflects real network call, not fake setTimeout
       setAnalyzeStatus('reading-ref')
-      await new Promise((r) => setTimeout(r, 500))
-      if (destId) {
-        setAnalyzeStatus('reading-dest')
-        await new Promise((r) => setTimeout(r, 400))
-      }
-      setAnalyzeStatus('processing')
       const context = await readFigmaFiles(
         figmaToken, anthropicKey,
         refId ?? destId!,
-        destId !== refId ? destId : undefined
+        destId && destId !== refId ? destId : undefined
       )
-      setFigmaContext(context)
       setAnalyzeStatus('done')
-      await new Promise((r) => setTimeout(r, 400))
+      setFigmaContext(context)
+      await new Promise((r) => setTimeout(r, 300))
       setStep('questions')
       startConversation(context)
     } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : 'Erro ao ler arquivo Figma.')
+      // Fix #8 — pass specific error message from claude.ts
+      setAnalyzeError(err instanceof Error ? err.message : 'Erro ao ler arquivo Figma. Tente novamente.')
       setStep('files')
     }
   }
@@ -312,7 +323,15 @@ export default function App() {
             {/* Figma Token */}
             <label>
               Token do Figma
-              <span className="hint">Figma → Settings → Account → Personal Access Tokens</span>
+              <span className="hint">
+                Figma → Settings → Account → Personal Access Tokens &nbsp;
+                <span
+                  style={{ color: 'var(--color-primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                  onClick={() => window.open('https://www.figma.com/settings', '_blank')}
+                >
+                  Abrir settings →
+                </span>
+              </span>
               <div className="token-wrap">
                 <input
                   type={figmaVisible ? 'text' : 'password'}
@@ -348,9 +367,16 @@ export default function App() {
               <div className="info-body">
                 <div className="info-title">Como obter a chave Anthropic</div>
                 <div className="info-text">
-                  Acesse <strong>console.anthropic.com/settings/keys</strong>, clique em <strong>Create Key</strong> e cole aqui.
+                  Clique no botão abaixo para criar uma chave.
                   Você paga apenas pelo uso da sua conta.
                 </div>
+                <button
+                  className="btn btn-outline"
+                  style={{ marginTop: 8, fontSize: 11, padding: '6px 12px', width: 'auto' }}
+                  onClick={() => window.open('https://console.anthropic.com/settings/keys', '_blank')}
+                >
+                  Abrir console.anthropic.com →
+                </button>
               </div>
             </div>
 
