@@ -204,15 +204,12 @@ export default function App() {
       {step === 'connect' && (
         <div className="scroll">
           <div className="step">
-            <div className="step-title">Credenciais</div>
+            <div className="step-title">Conectar contas</div>
+            <div className="step-sub">Salvas só no seu computador. Nunca enviadas a terceiros.</div>
 
             <label>
-              Token Figma
-              <span className="hint">
-                <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>
-                  Obter token →
-                </span>
-              </span>
+              Token do Figma
+              <span className="hint">Para ler seus arquivos · <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>Gerar token →</span></span>
               <div className="token-wrap">
                 <input type={figmaVisible ? 'text' : 'password'} placeholder="figd_..." value={figmaToken} onChange={(e) => setFigmaToken(e.target.value)} />
                 <button className="token-toggle" onClick={() => setFigmaVisible(v => !v)}>{figmaVisible ? '🙈' : '👁️'}</button>
@@ -220,12 +217,8 @@ export default function App() {
             </label>
 
             <label>
-              Chave Anthropic
-              <span className="hint">
-                <span className="link" onClick={() => window.open('https://console.anthropic.com/settings/keys', '_blank')}>
-                  Criar chave →
-                </span>
-              </span>
+              Chave de IA
+              <span className="hint">Para gerar o guideline · <span className="link" onClick={() => window.open('https://console.anthropic.com/settings/keys', '_blank')}>Criar chave →</span></span>
               <div className="token-wrap">
                 <input type={anthropicVisible ? 'text' : 'password'} placeholder="sk-ant-..." value={anthropicKey} onChange={(e) => setAnthropicKey(e.target.value)} />
                 <button className="token-toggle" onClick={() => setAnthropicVisible(v => !v)}>{anthropicVisible ? '🙈' : '👁️'}</button>
@@ -244,15 +237,17 @@ export default function App() {
         <div className="scroll">
           <div className="step">
             <div className="step-title">Arquivos Figma</div>
-            <div className="step-sub">Cole ao menos uma URL. A IA lê o conteúdo e faz perguntas para completar o guideline.</div>
+            <div className="step-sub">A IA lê o conteúdo e faz perguntas para montar o guideline. Ao menos um é necessário.</div>
 
             <label>
-              Referência <span className="hint">(handoff do componente)</span>
+              Arquivo com o design
+              <span className="hint">Cole a URL do handoff ou do componente</span>
               <input type="text" placeholder="https://www.figma.com/design/..." value={refUrl} onChange={(e) => setRefUrl(e.target.value)} />
             </label>
 
             <label>
-              Destino <span className="hint">(onde criar o guideline)</span>
+              Arquivo destino <span className="hint">(opcional)</span>
+              <span className="hint">Onde os slides serão criados</span>
               <input type="text" placeholder="https://www.figma.com/design/..." value={destUrl} onChange={(e) => setDestUrl(e.target.value)} />
             </label>
 
@@ -261,7 +256,7 @@ export default function App() {
             <button className="btn btn-primary" onClick={handleAnalyze} disabled={!refUrl.trim() && !destUrl.trim()}>
               Analisar
             </button>
-            <button className="btn-ghost btn" onClick={() => setStep('connect')}>← Credenciais</button>
+            <button className="btn-ghost btn" onClick={() => setStep('connect')}>← Voltar</button>
           </div>
         </div>
       )}
@@ -272,6 +267,7 @@ export default function App() {
           <div className="analyze-state">
             <div className="spinner" />
             <div className="analyze-title">Lendo arquivos…</div>
+            <div className="analyze-sub">Isso pode levar alguns segundos.</div>
             <div className="analyze-steps">
               {([
                 { id: 'reading-ref', label: 'Arquivo de referência' },
@@ -314,7 +310,7 @@ export default function App() {
           <div className="chat-input-bar">
             <textarea
               className="chat-textarea"
-              placeholder={isStreaming ? 'Aguarde…' : 'Responda ou diga "gerar"'}
+              placeholder={isStreaming ? 'Aguarde…' : 'Responda a pergunta ou escreva "gerar" para criar já'}
               value={chatInput}
               disabled={isStreaming}
               onChange={(e) => setChatInput(e.target.value)}
@@ -370,8 +366,8 @@ export default function App() {
         <div className="scroll">
           <div className="done-state">
             <div className="done-icon">🎉</div>
-            <div className="done-title">{guideline?.slides.length} slides criados</div>
-            <div className="done-sub">Adicione os mockups nos locais marcados com 📸.</div>
+            <div className="done-title">{guideline?.slides.length} slides criados!</div>
+            <div className="done-sub">Abra o Figma para ver os slides no canvas. Onde aparecer 📸, insira o print da tela correspondente.</div>
             {guideline && (
               <div style={{ width: '100%', marginTop: 8 }}>
                 {guideline.slides.filter(slideImageNote).map((s, i) => (
