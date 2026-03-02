@@ -12,16 +12,24 @@ export interface StreamCallbacks {
   onDone: () => void
 }
 
+function headers(anthropicKey: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'X-Anthropic-Key': anthropicKey,
+  }
+}
+
 // Read Figma files via backend proxy
 export async function readFigmaFiles(
-  token: string,
-  referenceFileId: string,
+  figmaToken: string,
+  anthropicKey: string,
+  referenceFileId?: string,
   destinationFileId?: string
 ): Promise<string> {
   const res = await fetch(`${BASE_URL}/api/read-file`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, referenceFileId, destinationFileId }),
+    headers: headers(anthropicKey),
+    body: JSON.stringify({ token: figmaToken, referenceFileId, destinationFileId }),
   })
 
   const data = await res.json() as { context?: string; error?: string }
@@ -29,20 +37,22 @@ export async function readFigmaFiles(
   return data.context ?? ''
 }
 
-// Stream chat with optional Figma context
+// Stream chat with Figma context
 export async function streamChat(
   messages: Message[],
   figmaContext: string,
+  anthropicKey: string,
   cb: StreamCallbacks
 ): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: headers(anthropicKey),
     body: JSON.stringify({ messages, figmaContext }),
   })
 
   if (!res.ok) {
-    cb.onError(`Erro do servidor: ${res.status}`)
+    const err = await res.json().catch(() => ({})) as { error?: string }
+    cb.onError(err.error ?? `Erro do servidor: ${res.status}`)
     return
   }
 

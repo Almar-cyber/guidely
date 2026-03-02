@@ -1,29 +1,47 @@
 import { buildGuideline } from './builder'
 import type { UIToPlugin } from './types'
 
-const TOKEN_KEY = 'figma_token'
+const KEY_FIGMA = 'figma_token'
+const KEY_ANTHROPIC = 'anthropic_key'
 
 figma.showUI(__html__, {
   width: 400,
   height: 640,
-  title: 'UX Guidelines AI',
+  title: 'Guidely',
   themeColors: true,
 })
 
-// Send stored token to UI on open
+// Send stored credentials to UI on open
 ;(async () => {
-  const token = await figma.clientStorage.getAsync(TOKEN_KEY) as string | undefined
-  if (token) figma.ui.postMessage({ type: 'STORED_TOKEN', token })
+  const [figmaToken, anthropicKey] = await Promise.all([
+    figma.clientStorage.getAsync(KEY_FIGMA) as Promise<string | undefined>,
+    figma.clientStorage.getAsync(KEY_ANTHROPIC) as Promise<string | undefined>,
+  ])
+  figma.ui.postMessage({
+    type: 'STORED_CREDENTIALS',
+    figmaToken: figmaToken ?? '',
+    anthropicKey: anthropicKey ?? '',
+  })
 })()
 
 figma.ui.onmessage = async (msg: UIToPlugin) => {
-  if (msg.type === 'GET_TOKEN') {
-    const token = await figma.clientStorage.getAsync(TOKEN_KEY) as string | undefined
-    figma.ui.postMessage({ type: 'STORED_TOKEN', token: token ?? '' })
+  if (msg.type === 'GET_CREDENTIALS') {
+    const [figmaToken, anthropicKey] = await Promise.all([
+      figma.clientStorage.getAsync(KEY_FIGMA) as Promise<string | undefined>,
+      figma.clientStorage.getAsync(KEY_ANTHROPIC) as Promise<string | undefined>,
+    ])
+    figma.ui.postMessage({
+      type: 'STORED_CREDENTIALS',
+      figmaToken: figmaToken ?? '',
+      anthropicKey: anthropicKey ?? '',
+    })
   }
 
-  if (msg.type === 'SAVE_TOKEN') {
-    await figma.clientStorage.setAsync(TOKEN_KEY, msg.token)
+  if (msg.type === 'SAVE_CREDENTIALS') {
+    await Promise.all([
+      figma.clientStorage.setAsync(KEY_FIGMA, msg.figmaToken),
+      figma.clientStorage.setAsync(KEY_ANTHROPIC, msg.anthropicKey),
+    ])
   }
 
   if (msg.type === 'BUILD_SLIDES') {

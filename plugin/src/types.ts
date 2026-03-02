@@ -81,12 +81,12 @@ export interface GuidelineData {
 // ─── Plugin ↔ UI messages ────────────────────────────────────
 
 export type PluginToUI =
-  | { type: 'STORED_TOKEN'; token: string }
+  | { type: 'STORED_CREDENTIALS'; figmaToken: string; anthropicKey: string }
   | { type: 'BUILD_COMPLETE'; count: number }
   | { type: 'BUILD_ERROR'; message: string }
 
 export type UIToPlugin =
-  | { type: 'GET_TOKEN' }
-  | { type: 'SAVE_TOKEN'; token: string }
+  | { type: 'GET_CREDENTIALS' }
+  | { type: 'SAVE_CREDENTIALS'; figmaToken: string; anthropicKey: string }
   | { type: 'BUILD_SLIDES'; data: GuidelineData }
   | { type: 'CLOSE' }

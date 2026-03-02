@@ -88,10 +88,11 @@ export default async function handler(req: Request): Promise<Response> {
     })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  // Key comes from the plugin (user's own key), fallback to env var for local dev
+  const apiKey = req.headers.get('X-Anthropic-Key') ?? process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Missing API key' }), {
-      status: 500,
+    return new Response(JSON.stringify({ error: 'Chave da API Anthropic não encontrada. Configure-a nas configurações do Guidely.' }), {
+      status: 401,
       headers: { 'Content-Type': 'application/json' },
     })
   }

@@ -2,6 +2,7 @@
   "name": "Guidely",
   "id": "ux-guidelines-ai-ccap",
   "api": "1.0.0",
+  "editorType": ["figma"],
   "main": "dist/main.js",
   "ui": "dist/ui.html",
   "networkAccess": {
