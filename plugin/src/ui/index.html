@@ -63,33 +63,33 @@
       --ax-yellow-600: #fddd00;
       --ax-yellow-dark: #b45309;
 
-      /* ─── Semantic tokens ─── */
-      --color-bg:          #ffffff;
-      --color-surface:     var(--ax-gray-100);   /* #f4f5f9 */
-      --color-surface-2:   var(--ax-gray-200);   /* #e7e9f3 */
-      --color-border:      var(--ax-gray-300);   /* #d0d4e6 */
-      --color-border-2:    var(--ax-gray-200);
+      /* ─── Semantic tokens — Dark mode ─── */
+      --color-bg:          var(--ax-dark-200);   /* #0d0d1b — fundo principal */
+      --color-surface:     var(--ax-dark-300);   /* #191a2e — cards, inputs */
+      --color-surface-2:   var(--ax-dark-400);   /* #282a43 — hover, badges */
+      --color-border:      var(--ax-dark-500);   /* #3f415f */
+      --color-border-2:    var(--ax-dark-400);   /* #282a43 */
 
-      --color-text:        var(--ax-gray-900);   /* #282833 */
-      --color-text-2:      var(--ax-gray-700);   /* #646587 */
-      --color-text-3:      var(--ax-gray-500);   /* #9c9ebf */
+      --color-text:        var(--ax-dark-900);   /* #d8d6e5 */
+      --color-text-2:      var(--ax-dark-700);   /* #9292b0 */
+      --color-text-3:      var(--ax-dark-600);   /* #656686 */
       --color-text-inv:    #ffffff;
 
-      --color-primary:     var(--ax-blue-700);   /* #434be4  Andes X blue */
-      --color-primary-bg:  var(--ax-blue-100);   /* #e9f1ff */
+      --color-primary:     var(--ax-blue-700);   /* #434be4 */
+      --color-primary-bg:  var(--ax-dark-400);   /* #282a43 — bg de badge em dark */
       --color-primary-hov: var(--ax-blue-800);   /* #353ac5 */
 
-      --color-dark:        var(--ax-dark-200);   /* #0d0d1b */
-      --color-dark-2:      var(--ax-dark-300);   /* #191a2e */
+      --color-dark:        var(--ax-dark-400);   /* #282a43 — botão primário em dark */
+      --color-dark-2:      var(--ax-dark-500);   /* #3f415f */
 
       --color-success:     var(--mp-green);      /* #00a650 */
-      --color-success-bg:  var(--mp-green-bg);   /* #e6f7ee */
+      --color-success-bg:  #0d2b1a;              /* verde escuro para dark mode */
 
-      --color-danger:      var(--ax-red-600);    /* #ed314a */
-      --color-danger-bg:   var(--ax-red-100);    /* #ffe5e9 */
+      --color-danger:      #ff6b7a;              /* vermelho mais claro para dark */
+      --color-danger-bg:   #2a1018;              /* fundo vermelho escuro */
 
-      --color-warn-bg:     var(--ax-yellow-100); /* #fffbd9 */
-      --color-warn-text:   var(--ax-yellow-dark);
+      --color-warn-bg:     #2a2000;              /* amarelo escuro */
+      --color-warn-text:   #ffd166;
 
       /* ─── Typography — ax-font ─── */
       --font:        'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -144,7 +144,7 @@
       padding: var(--sp-12) var(--sp-16);
       border-bottom: 1px solid var(--color-border-2);
       flex-shrink: 0;
-      background: var(--color-bg);
+      background: var(--ax-dark-300);
     }
     .topbar-logo {
       width: 22px; height: 22px;
@@ -282,18 +282,18 @@
     .btn:active:not(:disabled) { transform: scale(0.985); }
     .btn:disabled { opacity: 0.38; cursor: not-allowed; }
 
-    .btn-primary { background: var(--color-dark); color: var(--color-text-inv); }
-    .btn-primary:hover:not(:disabled) { background: var(--color-dark-2); }
+    .btn-primary { background: var(--color-primary); color: var(--color-text-inv); }
+    .btn-primary:hover:not(:disabled) { background: var(--color-primary-hov); }
 
     .btn-accent { background: var(--color-primary); color: var(--color-text-inv); }
     .btn-accent:hover:not(:disabled) { background: var(--color-primary-hov); }
 
     .btn-outline {
-      background: var(--color-bg);
+      background: var(--color-surface);
       color: var(--color-text);
       border: 1.5px solid var(--color-border);
     }
-    .btn-outline:hover:not(:disabled) { background: var(--color-surface); }
+    .btn-outline:hover:not(:disabled) { background: var(--color-surface-2); }
 
     .btn-ghost {
       background: none;
@@ -387,12 +387,12 @@
       word-break: break-word;
     }
     .bubble.user {
-      background: var(--color-dark);
+      background: var(--color-primary);
       color: var(--color-text-inv);
       border-bottom-right-radius: var(--sp-4);
     }
     .bubble.assistant {
-      background: var(--color-surface);
+      background: var(--ax-dark-300);
       color: var(--color-text);
       border-bottom-left-radius: var(--sp-4);
     }
@@ -421,7 +421,7 @@
       border-top: 1px solid var(--color-border-2);
       padding: var(--sp-10);
       display: flex; gap: var(--sp-8); align-items: flex-end;
-      flex-shrink: 0; background: var(--color-bg);
+      flex-shrink: 0; background: var(--ax-dark-300);
     }
     .chat-textarea {
       flex: 1;
@@ -442,13 +442,13 @@
     .send-btn {
       width: 36px; height: 36px;
       border-radius: var(--r);
-      background: var(--color-dark);
+      background: var(--color-primary);
       border: none; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       transition: background 0.15s;
     }
-    .send-btn:hover { background: var(--color-dark-2); }
+    .send-btn:hover { background: var(--color-primary-hov); }
     .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .send-btn svg { fill: #fff; }
 
@@ -495,7 +495,7 @@
       padding: var(--sp-12) var(--sp-16);
       display: flex; flex-direction: column; gap: var(--sp-8);
       border-top: 1px solid var(--color-border-2);
-      flex-shrink: 0; background: var(--color-bg);
+      flex-shrink: 0; background: var(--ax-dark-300);
     }
 
     /* ─── Done state ─── */
@@ -518,7 +518,7 @@
     .doc-toolbar-title { font-size: var(--font-12); font-weight: var(--fw-semibold); }
     .doc-copy-btn {
       font-size: var(--font-10); font-weight: var(--fw-semibold);
-      color: var(--mp-green-dark); background: var(--color-success-bg);
+      color: var(--mp-green); background: var(--color-success-bg);
       border: none; border-radius: var(--r);
       padding: var(--sp-4) var(--sp-10); cursor: pointer;
     }
@@ -551,7 +551,7 @@
       flex: 1;
       padding: var(--sp-40) var(--sp-32);
       text-align: center;
-      background: var(--color-dark);
+      background: var(--ax-dark-200);
       min-height: 100vh;
     }
     .onboarding-logo {
