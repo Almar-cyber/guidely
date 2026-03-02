@@ -606,6 +606,36 @@
     }
     .oauth-check { font-size: 14px; }
 
+    /* ─── Key guide steps ─── */
+    .key-guide {
+      background: var(--ax-dark-400);
+      border-radius: var(--r);
+      padding: var(--sp-12);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-8);
+    }
+    .key-guide-step {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-8);
+      font-size: var(--font-12);
+      color: var(--color-text-2);
+      line-height: 1.5;
+    }
+    .key-guide-step strong { color: var(--color-text); font-weight: var(--fw-semibold); }
+    .key-step-num {
+      min-width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      color: #fff;
+      font-size: var(--font-10);
+      font-weight: var(--fw-bold);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
     /* ─── Onboarding ─── */
     .onboarding {
       display: flex;

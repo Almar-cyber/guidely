@@ -27,6 +27,7 @@ export default function App() {
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [anthropicVisible, setAnthropicVisible] = useState(false)
+  const [anthropicStep, setAnthropicStep] = useState<'idle' | 'waiting' | 'pasted'>('idle')
   const [oauthState, setOauthState] = useState<string | null>(null)
   const [oauthStatus, setOauthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
   const [oauthError, setOauthError] = useState('')
@@ -227,7 +228,9 @@ export default function App() {
     setDestUrl('')
   }
 
-  const credentialsValid = figmaToken.trim().length > 0 && anthropicKey.trim().length > 0
+  const figmaConnected = oauthStatus === 'done' || figmaToken.trim().length > 0
+  const anthropicConnected = anthropicStep === 'pasted' || (anthropicKey.trim().startsWith('sk-ant-') && anthropicKey.trim().length > 20)
+  const credentialsValid = figmaConnected && anthropicConnected
 
   return (
     <>
@@ -314,14 +317,60 @@ export default function App() {
               </div>
             )}
 
-            <label>
-              Chave de IA
-              <span className="hint">Para gerar o guideline · <span className="link" onClick={() => window.open('https://console.anthropic.com/settings/keys', '_blank')}>Criar chave →</span></span>
-              <div className="token-wrap">
-                <input type={anthropicVisible ? 'text' : 'password'} placeholder="sk-ant-..." value={anthropicKey} onChange={(e) => setAnthropicKey(e.target.value)} />
-                <button className="token-toggle" onClick={() => setAnthropicVisible(v => !v)}>{anthropicVisible ? '🙈' : '👁️'}</button>
+            {/* Chave de IA — fluxo guiado */}
+            {anthropicStep === 'idle' && (
+              <div className="oauth-block">
+                <div className="oauth-label">Chave de IA</div>
+                <div className="oauth-hint">Para gerar o guideline com Claude</div>
+                <button className="btn oauth-btn" onClick={() => {
+                  setAnthropicStep('waiting')
+                  window.open('https://platform.claude.com/settings/keys', '_blank')
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+                    <path d="M23.5 8.9L16 4.5 8.5 8.9v8.8l7.5 4.4 7.5-4.4V8.9z" fill="#D97757"/>
+                    <path d="M16 4.5v17.6M8.5 8.9l7.5 4.4 7.5-4.4M8.5 17.7l7.5 4.4 7.5-4.4" stroke="#fff" strokeWidth="1" strokeOpacity="0.3"/>
+                  </svg>
+                  Obter chave do Claude
+                </button>
               </div>
-            </label>
+            )}
+
+            {anthropicStep === 'waiting' && (
+              <div className="oauth-block">
+                <div className="oauth-label">Chave de IA</div>
+                <div className="key-guide">
+                  <div className="key-guide-step"><span className="key-step-num">1</span><span>Na página que abriu, clique em <strong>Create Key</strong></span></div>
+                  <div className="key-guide-step"><span className="key-step-num">2</span><span>Copie a chave gerada</span></div>
+                  <div className="key-guide-step"><span className="key-step-num">3</span><span>Cole aqui embaixo</span></div>
+                </div>
+                <div className="token-wrap" style={{ marginTop: 8 }}>
+                  <input
+                    type={anthropicVisible ? 'text' : 'password'}
+                    placeholder="Cole a chave aqui (sk-ant-...)"
+                    value={anthropicKey}
+                    autoFocus
+                    onChange={(e) => {
+                      setAnthropicKey(e.target.value)
+                      if (e.target.value.startsWith('sk-ant-') && e.target.value.length > 20) {
+                        setAnthropicStep('pasted')
+                      }
+                    }}
+                  />
+                  <button className="token-toggle" onClick={() => setAnthropicVisible(v => !v)}>
+                    {anthropicVisible ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                <button className="btn-ghost btn" style={{ fontSize: 11, marginTop: 4 }} onClick={() => setAnthropicStep('idle')}>← Voltar</button>
+              </div>
+            )}
+
+            {anthropicStep === 'pasted' && (
+              <div className="oauth-connected">
+                <span className="oauth-check">✅</span>
+                <span>Chave de IA configurada</span>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setAnthropicStep('idle'); setAnthropicKey('') }}>Trocar</button>
+              </div>
+            )}
 
             <button className="btn btn-primary" onClick={handleSaveCredentials} disabled={!credentialsValid}>
               Continuar
