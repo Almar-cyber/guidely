@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["ES2017"],
+    "strict": true,
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "typeRoots": ["./node_modules/@figma/plugin-typings"],
+    "outDir": "dist",
+    "skipLibCheck": true
+  },
+  "include": ["src/main.ts", "src/builder.ts", "src/templates.ts", "src/types.ts"]
+}
