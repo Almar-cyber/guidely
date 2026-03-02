@@ -3,11 +3,11 @@ import type { GuidelineData, Slide, PluginToUI } from '../types'
 import { streamChat, readFigmaFiles, extractFileId, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
 
-type Step = 'connect' | 'files' | 'analyzing' | 'questions' | 'preview' | 'output-figma' | 'output-doc'
+type Step = 'onboarding' | 'connect' | 'files' | 'analyzing' | 'questions' | 'preview' | 'output-figma' | 'output-doc'
 type AnalyzeStatus = 'reading-ref' | 'reading-dest' | 'done'
 
 const STEP_PROGRESS: Record<Step, number> = {
-  connect: 20, files: 40, analyzing: 60,
+  onboarding: 0, connect: 20, files: 40, analyzing: 60,
   questions: 75, preview: 95,
   'output-figma': 100, 'output-doc': 100,
 }
@@ -22,7 +22,7 @@ function slideImageNote(s: Slide): string | undefined {
 }
 
 export default function App() {
-  const [step, setStep] = useState<Step>('connect')
+  const [step, setStep] = useState<Step>('onboarding')
 
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
@@ -58,7 +58,9 @@ export default function App() {
       if (msg.type === 'STORED_CREDENTIALS') {
         if (msg.figmaToken) setFigmaToken(msg.figmaToken)
         if (msg.anthropicKey) setAnthropicKey(msg.anthropicKey)
+        // Skip onboarding and connect if already configured
         if (msg.figmaToken && msg.anthropicKey) setStep('files')
+        else if (msg.figmaToken || msg.anthropicKey) setStep('connect')
       }
       if (msg.type === 'BUILD_COMPLETE') setStep('output-figma')
       if (msg.type === 'BUILD_ERROR') { setBuildError(msg.message); setStep('preview') }
@@ -189,16 +191,47 @@ export default function App() {
 
   return (
     <>
-      {/* Topbar */}
-      <div className="topbar">
-        <div className="topbar-logo">✦</div>
-        <span className="topbar-title">Guidely</span>
-      </div>
+      {/* ── Onboarding (tela cheia, sem topbar) ── */}
+      {step === 'onboarding' && (
+        <div className="onboarding">
+          <div className="onboarding-logo">✦</div>
+          <div className="onboarding-title">Guidely</div>
+          <div className="onboarding-tagline">Guidelines para lideranças, gerados por IA.</div>
 
-      {/* Progress */}
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${STEP_PROGRESS[step]}%` }} />
-      </div>
+          <div className="onboarding-steps">
+            {[
+              { icon: '📂', label: 'Aponta para o arquivo Figma' },
+              { icon: '🤖', label: 'A IA analisa e faz perguntas' },
+              { icon: '✨', label: 'Gera slides prontos no canvas' },
+            ].map(({ icon, label }) => (
+              <div key={label} className="onboarding-step">
+                <span className="onboarding-step-icon">{icon}</span>
+                <span className="onboarding-step-label">{label}</span>
+              </div>
+            ))}
+          </div>
+
+          <button className="btn btn-primary onboarding-cta" onClick={() => setStep('connect')}>
+            Começar
+          </button>
+          <div className="onboarding-note">Configuração rápida · Feito pela equipe CCAP</div>
+        </div>
+      )}
+
+      {/* Topbar (oculta no onboarding) */}
+      {step !== 'onboarding' && (
+        <div className="topbar">
+          <div className="topbar-logo">✦</div>
+          <span className="topbar-title">Guidely</span>
+        </div>
+      )}
+
+      {/* Progress (oculto no onboarding) */}
+      {step !== 'onboarding' && (
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${STEP_PROGRESS[step]}%` }} />
+        </div>
+      )}
 
       {/* ── Credenciais ── */}
       {step === 'connect' && (

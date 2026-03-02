@@ -541,6 +541,76 @@
       line-height: 1.55;
     }
 
+    /* ─── Onboarding ─── */
+    .onboarding {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-20);
+      flex: 1;
+      padding: var(--sp-40) var(--sp-32);
+      text-align: center;
+      background: var(--color-dark);
+      min-height: 100vh;
+    }
+    .onboarding-logo {
+      width: 48px; height: 48px;
+      border-radius: var(--r-lg);
+      background: var(--color-primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      color: #fff;
+    }
+    .onboarding-title {
+      font-size: 28px;
+      font-weight: var(--fw-bold);
+      color: #fff;
+      letter-spacing: -0.5px;
+      margin-top: calc(var(--sp-4) * -1);
+    }
+    .onboarding-tagline {
+      font-size: var(--font-14);
+      color: var(--ax-dark-800);
+      line-height: 1.5;
+      max-width: 240px;
+    }
+    .onboarding-steps {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-8);
+      width: 100%;
+      margin: var(--sp-8) 0;
+    }
+    .onboarding-step {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-12);
+      padding: var(--sp-12) var(--sp-16);
+      background: var(--ax-dark-300);
+      border-radius: var(--r);
+      text-align: left;
+    }
+    .onboarding-step-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .onboarding-step-label {
+      font-size: var(--font-14);
+      color: var(--ax-dark-900);
+      font-weight: var(--fw-semibold);
+    }
+    .onboarding-cta {
+      width: 100%;
+      background: var(--color-primary);
+      font-size: var(--font-16);
+      padding: var(--sp-12) var(--sp-16);
+    }
+    .onboarding-note {
+      font-size: var(--font-10);
+      color: var(--ax-dark-600);
+    }
+
     /* ─── Welcome flow ─── */
     .welcome-flow { display: flex; flex-direction: column; gap: var(--sp-8); }
     .flow-step {
