@@ -327,11 +327,11 @@ export default function App() {
 
             <div className="welcome-flow">
               {[
-                ['Conecte seu Figma', 'Cole o token pessoal de acesso (salvo com segurança no plugin).'],
-                ['Indique os arquivos', 'URL do arquivo com o design + arquivo destino do guideline.'],
+                ['Conecte seu Figma', 'Cole seu Personal Access Token do Figma (salvo com segurança no plugin).'],
+                ['Indique os arquivos', 'URL do handoff de referência e/ou do arquivo destino do guideline.'],
                 ['IA lê e pergunta', 'Analisa o conteúdo e faz 2–4 perguntas para preencher lacunas.'],
                 ['Revise a estrutura', 'Veja todos os slides propostos antes de criar.'],
-                ['Gere no Figma ou exporte', 'Slides direto no canvas ou documento Markdown com orientações.'],
+                ['Gere no Figma ou exporte', 'Slides direto no canvas ou documento Markdown.'],
               ].map(([title, desc], i) => (
                 <div key={i} className="flow-step">
                   <div className="flow-num">{i + 1}</div>

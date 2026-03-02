@@ -47,7 +47,19 @@ guidely/
 
 ---
 
-### 1. Backend (proxy Vercel)
+### 1. Obter chave da API Anthropic
+
+O Guidely usa o Claude (Anthropic) para gerar os guidelines. Você precisará de uma chave de API própria.
+
+1. Acesse **https://console.anthropic.com/settings/keys**
+2. Clique em **Create Key**
+3. Copie a chave gerada (começa com `sk-ant-...`)
+
+> A chave é usada apenas no seu servidor Vercel — nunca é exposta no plugin ou no repositório.
+
+---
+
+### 2. Backend (proxy Vercel)
 
 ```bash
 cd backend
@@ -64,6 +76,10 @@ Deploy:
 ```bash
 npx vercel deploy --prod
 ```
+
+Quando solicitado, adicione a variável de ambiente na Vercel:
+- **Name:** `ANTHROPIC_API_KEY`
+- **Value:** sua chave `sk-ant-...`
 
 Copie a URL gerada (ex: `https://guidely-proxy.vercel.app`).
 
