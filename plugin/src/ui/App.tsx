@@ -196,7 +196,7 @@ export default function App() {
         <div className="onboarding">
           <div className="onboarding-logo">✦</div>
           <div className="onboarding-title">Guidely</div>
-          <div className="onboarding-tagline">Guidelines para lideranças, gerados por IA.</div>
+          <div className="onboarding-tagline">Construa guidelines simples de entender.</div>
 
           <div className="onboarding-steps">
             {[
