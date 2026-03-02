@@ -2,6 +2,23 @@ const BASE_URL = 'https://ux-guidelines-proxy.vercel.app'
 
 // ─── Figma OAuth ─────────────────────────────────────────────
 
+// ─── Anthropic OAuth ─────────────────────────────────────────
+
+export async function startAnthropicOAuth(): Promise<{ url: string; state: string }> {
+  const res = await fetch(`${BASE_URL}/api/auth/anthropic/start`)
+  const data = await res.json() as { url?: string; state?: string; error?: string }
+  if (!res.ok || !data.url) throw new Error(data.error ?? 'Falha ao iniciar autenticação Anthropic')
+  return { url: data.url, state: data.state! }
+}
+
+export async function pollAnthropicKey(state: string): Promise<string | null> {
+  const res = await fetch(`${BASE_URL}/api/auth/anthropic/poll?state=${state}`)
+  const data = await res.json() as { status: 'pending' | 'done'; key?: string }
+  return data.status === 'done' ? data.key! : null
+}
+
+// ─── Figma OAuth ─────────────────────────────────────────────
+
 export async function startFigmaOAuth(): Promise<{ url: string; state: string }> {
   const res = await fetch(`${BASE_URL}/api/auth/start`)
   const data = await res.json() as { url?: string; state?: string; error?: string }

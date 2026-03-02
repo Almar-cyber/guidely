@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { GuidelineData, Slide, PluginToUI } from '../types'
-import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, type Message } from './claude'
+import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
 
 type Step = 'onboarding' | 'connect' | 'files' | 'analyzing' | 'questions' | 'preview' | 'output-figma' | 'output-doc'
@@ -26,8 +26,9 @@ export default function App() {
 
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
-  const [anthropicVisible, setAnthropicVisible] = useState(false)
-  const [anthropicStep, setAnthropicStep] = useState<'idle' | 'waiting' | 'pasted'>('idle')
+  const [anthropicOAuthStatus, setAnthropicOAuthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
+  const [anthropicOAuthError, setAnthropicOAuthError] = useState('')
+  const anthropicPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [oauthState, setOauthState] = useState<string | null>(null)
   const [oauthStatus, setOauthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
   const [oauthError, setOauthError] = useState('')
@@ -52,7 +53,10 @@ export default function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Cleanup polling on unmount
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
+  useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current)
+    if (anthropicPollRef.current) clearInterval(anthropicPollRef.current)
+  }, [])
 
   useEffect(() => {
     parent.postMessage({ pluginMessage: { type: 'GET_CREDENTIALS' } }, '*')
@@ -82,6 +86,37 @@ export default function App() {
     })
     return () => cancelAnimationFrame(id)
   }, [messages, streamingText])
+
+  const handleConnectAnthropic = async () => {
+    setAnthropicOAuthStatus('waiting')
+    setAnthropicOAuthError('')
+    try {
+      const { url, state } = await startAnthropicOAuth()
+      window.open(url, '_blank')
+
+      let attempts = 0
+      anthropicPollRef.current = setInterval(async () => {
+        attempts++
+        if (attempts > 150) {
+          clearInterval(anthropicPollRef.current!)
+          setAnthropicOAuthStatus('error')
+          setAnthropicOAuthError('Tempo esgotado. Tente conectar novamente.')
+          return
+        }
+        try {
+          const key = await pollAnthropicKey(state)
+          if (key) {
+            clearInterval(anthropicPollRef.current!)
+            setAnthropicKey(key)
+            setAnthropicOAuthStatus('done')
+          }
+        } catch { /* keep polling */ }
+      }, 2000)
+    } catch (err) {
+      setAnthropicOAuthStatus('error')
+      setAnthropicOAuthError(err instanceof Error ? err.message : 'Erro ao conectar com Anthropic.')
+    }
+  }
 
   const handleConnectFigma = async () => {
     setOauthStatus('waiting')
@@ -229,7 +264,7 @@ export default function App() {
   }
 
   const figmaConnected = oauthStatus === 'done' || figmaToken.trim().length > 0
-  const anthropicConnected = anthropicStep === 'pasted' || (anthropicKey.trim().startsWith('sk-ant-') && anthropicKey.trim().length > 20)
+  const anthropicConnected = anthropicOAuthStatus === 'done' || (anthropicKey.trim().length > 20)
   const credentialsValid = figmaConnected && anthropicConnected
 
   return (
@@ -317,58 +352,33 @@ export default function App() {
               </div>
             )}
 
-            {/* Chave de IA — fluxo guiado */}
-            {anthropicStep === 'idle' && (
+            {/* Anthropic OAuth */}
+            {anthropicOAuthStatus !== 'done' ? (
               <div className="oauth-block">
-                <div className="oauth-label">Chave de IA</div>
-                <div className="oauth-hint">Para gerar o guideline com Claude</div>
-                <button className="btn oauth-btn" onClick={() => {
-                  setAnthropicStep('waiting')
-                  window.open('https://platform.claude.com/settings/keys', '_blank')
-                }}>
-                  <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
-                    <path d="M23.5 8.9L16 4.5 8.5 8.9v8.8l7.5 4.4 7.5-4.4V8.9z" fill="#D97757"/>
-                    <path d="M16 4.5v17.6M8.5 8.9l7.5 4.4 7.5-4.4M8.5 17.7l7.5 4.4 7.5-4.4" stroke="#fff" strokeWidth="1" strokeOpacity="0.3"/>
-                  </svg>
-                  Obter chave do Claude
-                </button>
-              </div>
-            )}
-
-            {anthropicStep === 'waiting' && (
-              <div className="oauth-block">
-                <div className="oauth-label">Chave de IA</div>
-                <div className="key-guide">
-                  <div className="key-guide-step"><span className="key-step-num">1</span><span>Na página que abriu, clique em <strong>Create Key</strong></span></div>
-                  <div className="key-guide-step"><span className="key-step-num">2</span><span>Copie a chave gerada</span></div>
-                  <div className="key-guide-step"><span className="key-step-num">3</span><span>Cole aqui embaixo</span></div>
-                </div>
-                <div className="token-wrap" style={{ marginTop: 8 }}>
-                  <input
-                    type={anthropicVisible ? 'text' : 'password'}
-                    placeholder="Cole a chave aqui (sk-ant-...)"
-                    value={anthropicKey}
-                    autoFocus
-                    onChange={(e) => {
-                      setAnthropicKey(e.target.value)
-                      if (e.target.value.startsWith('sk-ant-') && e.target.value.length > 20) {
-                        setAnthropicStep('pasted')
-                      }
-                    }}
-                  />
-                  <button className="token-toggle" onClick={() => setAnthropicVisible(v => !v)}>
-                    {anthropicVisible ? '🙈' : '👁️'}
+                <div className="oauth-label">Conta do Claude</div>
+                <div className="oauth-hint">Para gerar o guideline com IA</div>
+                {anthropicOAuthStatus === 'waiting' ? (
+                  <div className="oauth-waiting">
+                    <div className="oauth-spinner" />
+                    <span>Aguardando aprovação no browser…</span>
+                  </div>
+                ) : (
+                  <button className="btn oauth-btn" onClick={handleConnectAnthropic}>
+                    <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+                      <path d="M23.5 8.9L16 4.5 8.5 8.9v8.8l7.5 4.4 7.5-4.4V8.9z" fill="#D97757"/>
+                    </svg>
+                    Conectar com Claude
                   </button>
-                </div>
-                <button className="btn-ghost btn" style={{ fontSize: 11, marginTop: 4 }} onClick={() => setAnthropicStep('idle')}>← Voltar</button>
+                )}
+                {anthropicOAuthStatus === 'error' && (
+                  <div className="error-card" style={{ marginTop: 8, fontSize: 12 }}>{anthropicOAuthError}</div>
+                )}
               </div>
-            )}
-
-            {anthropicStep === 'pasted' && (
+            ) : (
               <div className="oauth-connected">
                 <span className="oauth-check">✅</span>
-                <span>Chave de IA configurada</span>
-                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setAnthropicStep('idle'); setAnthropicKey('') }}>Trocar</button>
+                <span>Claude conectado</span>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>Trocar</button>
               </div>
             )}
 

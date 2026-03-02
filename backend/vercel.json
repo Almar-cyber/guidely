@@ -5,7 +5,10 @@
     "api/read-file.ts": { "runtime": "edge" },
     "api/auth/start.ts": { "runtime": "edge" },
     "api/auth/callback.ts": { "runtime": "edge" },
-    "api/auth/poll.ts": { "runtime": "edge" }
+    "api/auth/poll.ts": { "runtime": "edge" },
+    "api/auth/anthropic/start.ts": { "runtime": "edge" },
+    "api/auth/anthropic/callback.ts": { "runtime": "edge" },
+    "api/auth/anthropic/poll.ts": { "runtime": "edge" }
   },
   "rewrites": [
     { "source": "/auth-result.html", "destination": "/public/auth-result.html" }
