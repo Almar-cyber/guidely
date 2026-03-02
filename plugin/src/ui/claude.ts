@@ -1,5 +1,20 @@
 const BASE_URL = 'https://ux-guidelines-proxy.vercel.app'
 
+// ─── Figma OAuth ─────────────────────────────────────────────
+
+export async function startFigmaOAuth(): Promise<{ url: string; state: string }> {
+  const res = await fetch(`${BASE_URL}/api/auth/start`)
+  const data = await res.json() as { url?: string; state?: string; error?: string }
+  if (!res.ok || !data.url) throw new Error(data.error ?? 'Falha ao iniciar autenticação')
+  return { url: data.url, state: data.state! }
+}
+
+export async function pollFigmaToken(state: string): Promise<string | null> {
+  const res = await fetch(`${BASE_URL}/api/auth/poll?state=${state}`)
+  const data = await res.json() as { status: 'pending' | 'done'; token?: string }
+  return data.status === 'done' ? data.token! : null
+}
+
 export interface Message {
   role: 'user' | 'assistant'
   content: string

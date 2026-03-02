@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { GuidelineData, Slide, PluginToUI } from '../types'
-import { streamChat, readFigmaFiles, extractFileId, type Message } from './claude'
+import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
 
 type Step = 'onboarding' | 'connect' | 'files' | 'analyzing' | 'questions' | 'preview' | 'output-figma' | 'output-doc'
@@ -26,8 +26,11 @@ export default function App() {
 
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
-  const [figmaVisible, setFigmaVisible] = useState(false)
   const [anthropicVisible, setAnthropicVisible] = useState(false)
+  const [oauthState, setOauthState] = useState<string | null>(null)
+  const [oauthStatus, setOauthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
+  const [oauthError, setOauthError] = useState('')
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [refUrl, setRefUrl] = useState('')
   const [destUrl, setDestUrl] = useState('')
@@ -46,6 +49,9 @@ export default function App() {
   const [docMarkdown, setDocMarkdown] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Cleanup polling on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
   useEffect(() => {
     parent.postMessage({ pluginMessage: { type: 'GET_CREDENTIALS' } }, '*')
@@ -75,6 +81,40 @@ export default function App() {
     })
     return () => cancelAnimationFrame(id)
   }, [messages, streamingText])
+
+  const handleConnectFigma = async () => {
+    setOauthStatus('waiting')
+    setOauthError('')
+    try {
+      const { url, state } = await startFigmaOAuth()
+      setOauthState(state)
+      window.open(url, '_blank')
+
+      // Poll every 2s for up to 5 minutes
+      let attempts = 0
+      const MAX = 150
+      pollRef.current = setInterval(async () => {
+        attempts++
+        if (attempts > MAX) {
+          clearInterval(pollRef.current!)
+          setOauthStatus('error')
+          setOauthError('Tempo esgotado. Tente conectar novamente.')
+          return
+        }
+        try {
+          const token = await pollFigmaToken(state)
+          if (token) {
+            clearInterval(pollRef.current!)
+            setFigmaToken(token)
+            setOauthStatus('done')
+          }
+        } catch { /* keep polling */ }
+      }, 2000)
+    } catch (err) {
+      setOauthStatus('error')
+      setOauthError(err instanceof Error ? err.message : 'Erro ao conectar com Figma.')
+    }
+  }
 
   const handleSaveCredentials = () => {
     if (!figmaToken.trim() || !anthropicKey.trim()) return
@@ -240,14 +280,39 @@ export default function App() {
             <div className="step-title">Conectar contas</div>
             <div className="step-sub">Salvas só no seu computador. Nunca enviadas a terceiros.</div>
 
-            <label>
-              Token do Figma
-              <span className="hint">Para ler seus arquivos · <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>Gerar token →</span></span>
-              <div className="token-wrap">
-                <input type={figmaVisible ? 'text' : 'password'} placeholder="figd_..." value={figmaToken} onChange={(e) => setFigmaToken(e.target.value)} />
-                <button className="token-toggle" onClick={() => setFigmaVisible(v => !v)}>{figmaVisible ? '🙈' : '👁️'}</button>
+            {/* Figma OAuth */}
+            {oauthStatus !== 'done' ? (
+              <div className="oauth-block">
+                <div className="oauth-label">Conta do Figma</div>
+                <div className="oauth-hint">Para ler seus arquivos de design</div>
+                {oauthStatus === 'waiting' ? (
+                  <div className="oauth-waiting">
+                    <div className="oauth-spinner" />
+                    <span>Aguardando aprovação no browser…</span>
+                  </div>
+                ) : (
+                  <button className="btn oauth-btn" onClick={handleConnectFigma}>
+                    <svg width="16" height="16" viewBox="0 0 38 57" fill="none">
+                      <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
+                      <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5v9.5A9.5 9.5 0 0 1 9.5 47.5z" fill="#0ACF83"/>
+                      <path d="M0 28.5A9.5 9.5 0 0 1 9.5 19H19v19H9.5A9.5 9.5 0 0 1 0 28.5z" fill="#FF7262"/>
+                      <path d="M0 9.5A9.5 9.5 0 0 1 9.5 0H19v19H9.5A9.5 9.5 0 0 1 0 9.5z" fill="#F24E1E"/>
+                      <path d="M19 0h9.5A9.5 9.5 0 0 1 28.5 19H19V0z" fill="#FF7262"/>
+                    </svg>
+                    Conectar com Figma
+                  </button>
+                )}
+                {oauthStatus === 'error' && (
+                  <div className="error-card" style={{ marginTop: 8, fontSize: 12 }}>{oauthError}</div>
+                )}
               </div>
-            </label>
+            ) : (
+              <div className="oauth-connected">
+                <span className="oauth-check">✅</span>
+                <span>Figma conectado</span>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setOauthStatus('idle'); setFigmaToken('') }}>Trocar</button>
+              </div>
+            )}
 
             <label>
               Chave de IA

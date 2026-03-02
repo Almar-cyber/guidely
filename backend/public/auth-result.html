@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guidely — Autenticação</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0d0d1b;
+      color: #d8d6e5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #191a2e;
+      border: 1px solid #3f415f;
+      border-radius: 16px;
+      padding: 40px 32px;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+    .icon { font-size: 48px; margin-bottom: 20px; }
+    .title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: #9292b0; line-height: 1.6; }
+    .close-hint {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #656686;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="icon" id="icon">⏳</div>
+    <div class="title" id="title">Conectando…</div>
+    <div class="sub" id="sub"></div>
+    <div class="close-hint" id="hint"></div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search)
+    const success = params.get('success')
+    const error = params.get('error')
+
+    const icon = document.getElementById('icon')
+    const title = document.getElementById('title')
+    const sub = document.getElementById('sub')
+    const hint = document.getElementById('hint')
+
+    if (success) {
+      icon.textContent = '✅'
+      title.textContent = 'Figma conectado!'
+      sub.textContent = 'Volte para o Guidely no Figma para continuar.'
+      hint.textContent = 'Você pode fechar esta aba.'
+    } else if (error) {
+      icon.textContent = '❌'
+      title.textContent = 'Erro na autenticação'
+      const msgs = {
+        access_denied: 'Você cancelou a autorização do Figma.',
+        token_exchange_failed: 'Falha ao conectar com o Figma. Tente novamente.',
+        server_error: 'Erro interno. Tente novamente em alguns instantes.',
+      }
+      sub.textContent = msgs[error] ?? 'Algo deu errado. Feche esta aba e tente novamente.'
+      hint.textContent = 'Feche esta aba e tente novamente no plugin.'
+    }
+  </script>
+</body>
+</html>
