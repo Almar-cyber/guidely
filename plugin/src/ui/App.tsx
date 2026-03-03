@@ -212,7 +212,12 @@ export default function App() {
       setStep('questions')
       startConversation(context)
     } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : 'Erro ao ler arquivo. Tente novamente.')
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      setAnalyzeError(
+        msg === 'Failed to fetch'
+          ? 'Token do Figma inválido ou expirado. Vá em Credenciais e gere um novo token.'
+          : msg
+      )
       setStep('files')
     }
   }
