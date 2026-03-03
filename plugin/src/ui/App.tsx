@@ -467,12 +467,22 @@ export default function App() {
                   onChange={(e) => {
                     const val = e.target.value.trim()
                     setAnthropicKey(val)
-                    // Valid Anthropic keys: sk-ant-api03-... minimum ~80 chars
-                    if (val.startsWith('sk-ant-') && val.length >= 80) {
+                    if (val.startsWith('sk-ant-') && val.length >= 40) {
                       setAnthropicOAuthStatus('done')
                     }
                   }}
                 />
+
+                {anthropicKey.startsWith('sk-ant-') && anthropicKey.length >= 40 && (
+                  <span style={{ fontSize: 11, color: 'var(--mp-green)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckCircle2 size={12} /> Chave reconhecida — clique em Continuar
+                  </span>
+                )}
+                {anthropicKey.length > 4 && !anthropicKey.startsWith('sk-ant-') && (
+                  <span style={{ fontSize: 11, color: 'var(--color-danger)' }}>
+                    Chave inválida — deve começar com sk-ant-
+                  </span>
+                )}
 
                 <button className="btn-ghost btn" style={{ fontSize: 11, marginTop: 2 }}
                   onClick={() => setAnthropicOAuthStatus('idle')}>
