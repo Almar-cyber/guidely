@@ -278,7 +278,7 @@ export default function App() {
   }
 
   const figmaConnected = oauthStatus === 'done' || figmaToken.trim().length > 0
-  const anthropicConnected = accessCode.trim().length > 4
+  const anthropicConnected = anthropicOAuthStatus === 'done'
   const credentialsValid = figmaConnected && anthropicConnected
 
   return (
@@ -391,20 +391,6 @@ export default function App() {
                     {anthropicOAuthError && (
                       <div className="error-card" style={{ marginTop: 6, fontSize: 12 }}>{anthropicOAuthError}</div>
                     )}
-                    <div className="oauth-divider">ou</div>
-                    <label style={{ marginTop: 0 }}>
-                      <span style={{ fontSize: 11, color: 'var(--color-text-2)', fontWeight: 400 }}>Código de acesso da equipe</span>
-                      <input
-                        type="password"
-                        placeholder="guidely-ccap-****"
-                        value={accessCode}
-                        onChange={(e) => {
-                          setAccessCode(e.target.value)
-                          setAnthropicKey(e.target.value)
-                          if (e.target.value.trim().length > 4) setAnthropicOAuthStatus('done')
-                        }}
-                      />
-                    </label>
                   </>
                 )}
               </div>
