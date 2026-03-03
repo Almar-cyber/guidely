@@ -46,10 +46,23 @@ export default function App() {
   const CLI_CMD = `security find-generic-password -s "Claude Code" -a "$(whoami)" -w | pbcopy`
 
   const handleCopyCmd = () => {
-    navigator.clipboard.writeText(CLI_CMD).then(() => {
+    // Figma plugin sandbox: clipboard API may be blocked, use execCommand fallback
+    try {
+      const el = document.createElement('textarea')
+      el.value = CLI_CMD
+      el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
+      document.body.appendChild(el)
+      el.focus()
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
       setCmdCopied(true)
       setTimeout(() => setCmdCopied(false), 3000)
-    })
+    } catch {
+      navigator.clipboard?.writeText(CLI_CMD).catch(() => {})
+      setCmdCopied(true)
+      setTimeout(() => setCmdCopied(false), 3000)
+    }
   }
   const [figmaManual, setFigmaManual] = useState(false)
   const [figmaTokenManual, setFigmaTokenManual] = useState('')
@@ -415,26 +428,28 @@ export default function App() {
                     background: 'var(--ax-dark-100)',
                     border: '1px solid var(--color-border)',
                     borderRadius: 'var(--r)',
-                    padding: '10px 48px 10px 12px',
-                    fontFamily: 'monospace',
+                    padding: '10px 12px 28px 12px',
+                    fontFamily: '"SF Mono", "Fira Code", monospace',
                     fontSize: 11,
                     color: 'var(--color-text-2)',
-                    lineHeight: 1.5,
-                    wordBreak: 'break-all',
+                    lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
                   }}>
                     {CLI_CMD}
                   </div>
                   <button
                     onClick={handleCopyCmd}
                     style={{
-                      position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                      background: cmdCopied ? 'var(--color-success)' : 'var(--color-primary)',
+                      position: 'absolute', right: 8, bottom: 6,
+                      background: cmdCopied ? 'var(--mp-green)' : 'var(--color-primary)',
                       border: 'none', borderRadius: 'var(--r-sm)',
-                      padding: '4px 8px', cursor: 'pointer',
-                      fontSize: 10, fontWeight: 600, color: '#fff',
+                      padding: '4px 10px', cursor: 'pointer',
+                      fontSize: 11, fontWeight: 600, color: '#fff',
                       transition: 'background 0.2s',
+                      display: 'flex', alignItems: 'center', gap: 4,
                     }}>
-                    {cmdCopied ? '✓ Copiado' : 'Copiar'}
+                    {cmdCopied ? '✓ Copiado!' : 'Copiar'}
                   </button>
                 </div>
 
