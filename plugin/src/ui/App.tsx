@@ -371,7 +371,7 @@ export default function App() {
               <label>
                 Token do Figma
                 <span className="hint">
-                  Figma → Settings → Account → Personal Access Tokens &nbsp;
+                  Figma → Settings → Account → Security → Personal Access Tokens &nbsp;
                   <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>Abrir <ArrowRight size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
                 </span>
                 <input
