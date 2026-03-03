@@ -118,11 +118,13 @@ export default function App() {
   const [streamingText, setStreamingText] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [quickOptions, setQuickOptions] = useState<string[]>([])
 
   const [guideline, setGuideline] = useState<GuidelineData | null>(null)
   const [buildError, setBuildError] = useState('')
   const [docMarkdown, setDocMarkdown] = useState('')
+  const [docCopied, setDocCopied] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -301,22 +303,41 @@ export default function App() {
     setIsStreaming(true)
     setStreamingText('')
     let assistantText = ''
+    let guidelineReceived = false
     streamChat(newMessages, figmaContext, anthropicKey, {
       onText: (d) => { assistantText += d; setStreamingText(assistantText) },
       onGuideline: (data) => {
+        guidelineReceived = true
         setGuideline(data as GuidelineData)
         setStreamingText('')
         setIsStreaming(false)
-        setMessages((p) => [...p, { role: 'assistant', content: 'Guideline pronto.' }])
+        setIsGenerating(false)
         setStep('preview')
       },
-      onError: (m) => { setStreamingText(''); setIsStreaming(false); setMessages((p) => [...p, { role: 'assistant', content: m }]) },
+      onError: (m) => {
+        setStreamingText('')
+        setIsStreaming(false)
+        setIsGenerating(false)
+        setMessages((p) => [...p, { role: 'assistant', content: m }])
+      },
       onDone: () => {
+        if (guidelineReceived) {
+          // Tool already handled everything
+          setIsStreaming(false)
+          return
+        }
         if (assistantText) {
           const { clean, options } = extractOptions(assistantText)
+          // If Claude said it was generating but tool didn't arrive yet, show spinner
+          const isGeneratingKeywords = /gerando|generating|criando|vou gerar/i.test(clean)
           setMessages((p) => [...p, { role: 'assistant', content: clean }])
           setQuickOptions(options)
           setStreamingText('')
+          if (isGeneratingKeywords) {
+            setIsGenerating(true)
+            setIsStreaming(true)
+            return // Keep streaming state — tool result is still coming
+          }
         }
         setIsStreaming(false)
       },
@@ -336,10 +357,15 @@ export default function App() {
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(docMarkdown).catch(() => {
-      const el = document.querySelector('.doc-textarea') as HTMLTextAreaElement
-      el?.select(); document.execCommand('copy')
-    })
+    const el = document.createElement('textarea')
+    el.value = docMarkdown
+    el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
+    document.body.appendChild(el)
+    el.focus(); el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
+    setDocCopied(true)
+    setTimeout(() => setDocCopied(false), 3000)
   }
 
   const handleReset = () => {
@@ -576,13 +602,14 @@ export default function App() {
 
             <label>
               Arquivo destino <span className="hint">(opcional)</span>
-              <span className="hint">Onde os slides serão criados</span>
+              <span className="hint">Onde os slides serão criados. Deixe vazio para criar no arquivo atual.</span>
               <input type="text" placeholder="https://www.figma.com/design/..." value={destUrl} onChange={(e) => setDestUrl(e.target.value)} />
             </label>
 
             {analyzeError && <div className="error-card">{analyzeError}</div>}
 
-            <button className="btn btn-primary" onClick={handleAnalyze} disabled={!refUrl.trim() && !destUrl.trim()}>
+            <button className="btn btn-primary" onClick={handleAnalyze}
+              disabled={(!refUrl.trim() && !destUrl.trim()) || step === 'analyzing'}>
               Analisar
             </button>
             <button className="btn-ghost btn" onClick={() => setStep('connect')}><ArrowLeft size={13} /> Voltar</button>
@@ -597,6 +624,15 @@ export default function App() {
             <div className="spinner" />
             <div className="analyze-title">Lendo arquivos…</div>
             <div className="analyze-sub">Isso pode levar alguns segundos.</div>
+            {analyzeError && (
+              <div style={{ width: '100%' }}>
+                <div className="error-card">{analyzeError}</div>
+                <button className="btn btn-outline" style={{ marginTop: 12 }}
+                  onClick={() => { setStep('files') }}>
+                  <ArrowLeft size={14} /> Voltar e corrigir
+                </button>
+              </div>
+            )}
             <div className="analyze-steps">
               {([
                 { id: 'reading-ref', label: 'Arquivo de referência' },
@@ -630,10 +666,27 @@ export default function App() {
                 <Bubble key={i} role={msg.role} content={msg.content} />
               ))}
               {streamingText && <Bubble role="assistant" content={streamingText} />}
-              {isStreaming && !streamingText && <div className="bubble-wrap assistant"><div className="typing"><span /><span /><span /></div></div>}
+              {isGenerating && (
+                <div className="bubble-wrap assistant">
+                  <div className="bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className="oauth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                    Montando seu guideline…
+                  </div>
+                </div>
+              )}
+              {isStreaming && !streamingText && !isGenerating && <div className="bubble-wrap assistant"><div className="typing"><span /><span /><span /></div></div>}
               <div ref={messagesEndRef} />
             </div>
           </div>
+          {messages.length >= 3 && !isStreaming && quickOptions.length === 0 && (
+            <div style={{ padding: '4px 10px 0', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-ghost btn" style={{ fontSize: 11, padding: '4px 8px' }}
+                onClick={() => sendMessage('gerar')}>
+                <Wand2 size={11} /> Gerar agora
+              </button>
+            </div>
+          )}
+
           {quickOptions.length > 0 && !isStreaming && (
             <div className="quick-options">
               {quickOptions.map((opt) => (
@@ -686,9 +739,11 @@ export default function App() {
               })}
             </div>
           </div>
-          {buildError && <div style={{ padding: '0 16px 8px' }}><div className="error-card">{buildError}</div></div>}
           <div className="preview-actions">
-            <button className="btn btn-accent" onClick={handleBuildFigma}><Wand2 size={14} /> Criar slides no Figma</button>
+            {buildError && <div className="error-card">{buildError}</div>}
+            <button className="btn btn-accent" onClick={() => {
+              if (window.confirm(`Criar ${guideline?.slides.length} slides no arquivo Figma atual?`)) handleBuildFigma()
+            }}><Wand2 size={14} /> Criar slides no Figma</button>
             <div className="btn-row">
               <button className="btn btn-outline" onClick={handleExportDoc}><FileText size={14} /> Exportar doc</button>
               <button className="btn btn-outline" onClick={() => setStep('questions')}><Pencil size={14} /> Ajustar</button>
@@ -731,7 +786,12 @@ export default function App() {
         <div className="doc-output">
           <div className="doc-toolbar">
             <span className="doc-toolbar-title">Documento</span>
-            <button className="doc-copy-btn" onClick={handleCopy}><Copy size={11} style={{display:'inline',marginRight:4}} />Copiar</button>
+            <button className="doc-copy-btn" onClick={handleCopy}
+              style={{ background: docCopied ? 'var(--color-success-bg)' : undefined,
+                       color: docCopied ? 'var(--mp-green)' : undefined }}>
+              <Copy size={11} style={{display:'inline',marginRight:4}} />
+              {docCopied ? '✓ Copiado!' : 'Copiar'}
+            </button>
           </div>
           <textarea className="doc-textarea" value={docMarkdown} readOnly />
           <div style={{ padding: '10px 16px', borderTop: '1px solid var(--color-border-2)' }}>
