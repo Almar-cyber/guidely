@@ -6,6 +6,6 @@
   "main": "dist/main.js",
   "ui": "dist/ui.html",
   "networkAccess": {
-    "allowedDomains": ["https://ux-guidelines-proxy.vercel.app"]
+    "allowedDomains": ["https://guidely-mu.vercel.app"]
   }
 }

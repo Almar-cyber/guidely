@@ -1,4 +1,4 @@
-const BASE_URL = 'https://ux-guidelines-proxy.vercel.app'
+const BASE_URL = 'https://guidely-mu.vercel.app'
 
 // ─── Figma OAuth ─────────────────────────────────────────────
 
