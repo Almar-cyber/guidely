@@ -25,8 +25,10 @@ async function s256(verifier: string): Promise<string> {
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
+  // Auto-detect from request host if env var not set
+  const host = new URL(req.url).origin
   const redirectUri = process.env.ANTHROPIC_REDIRECT_URI
-    ?? 'https://ux-guidelines-proxy.vercel.app/api/auth/anthropic/callback'
+    ?? `${host}/api/auth/anthropic/callback`
 
   const state = randomBase64url(32)
   const codeVerifier = randomBase64url(48)

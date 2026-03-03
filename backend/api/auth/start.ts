@@ -11,7 +11,8 @@ export default function handler(req: Request): Response {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
   const clientId = process.env.FIGMA_CLIENT_ID
-  const redirectUri = process.env.FIGMA_REDIRECT_URI ?? 'https://ux-guidelines-proxy.vercel.app/api/auth/callback'
+  const host = new URL(req.url).origin
+  const redirectUri = process.env.FIGMA_REDIRECT_URI ?? `${host}/api/auth/callback`
 
   if (!clientId) {
     return new Response(JSON.stringify({ error: 'FIGMA_CLIENT_ID not configured' }), {

@@ -6,13 +6,17 @@ export const config = { runtime: 'edge' }
 
 const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
 
-const BASE = process.env.ANTHROPIC_REDIRECT_URI?.replace('/api/auth/anthropic/callback', '')
-  ?? 'https://ux-guidelines-proxy.vercel.app'
-
-const redirect = (path: string) =>
-  Response.redirect(`${BASE}/auth-result.html${path}`)
+// Auto-detect base URL from request if env var not set
+function getBase(req: Request): string {
+  return process.env.ANTHROPIC_REDIRECT_URI?.replace('/api/auth/anthropic/callback', '')
+    ?? new URL(req.url).origin
+}
 
 export default async function handler(req: Request): Promise<Response> {
+  const BASE = getBase(req)
+  const redirect = (path: string) =>
+    Response.redirect(`${BASE}/auth-result.html${path}`)
+
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
   const statePayload = searchParams.get('state')

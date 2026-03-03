@@ -12,7 +12,8 @@ export default async function handler(req: Request): Promise<Response> {
   const state = searchParams.get('state')
   const error = searchParams.get('error')
 
-  const redirectBase = process.env.FIGMA_REDIRECT_URI?.replace('/api/auth/callback', '') ?? 'https://ux-guidelines-proxy.vercel.app'
+  const redirectBase = process.env.FIGMA_REDIRECT_URI?.replace('/api/auth/callback', '')
+    ?? new URL(req.url).origin
 
   // User denied or error
   if (error || !code || !state) {
