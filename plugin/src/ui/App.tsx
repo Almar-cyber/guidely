@@ -1,4 +1,27 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
+
+// Simple markdown renderer
+function md(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;font-family:monospace;font-size:11px">$1</code>')
+    .replace(/^### (.+)$/gm, '<strong style="font-size:13px">$1</strong>')
+    .replace(/^## (.+)$/gm, '<strong style="font-size:14px">$1</strong>')
+    .replace(/^- (.+)$/gm, '<span style="display:flex;gap:6px;margin:2px 0"><span style="opacity:.5;flex-shrink:0">•</span><span>$1</span></span>')
+    .replace(/^\d+\. (.+)$/gm, '<span style="display:flex;gap:6px;margin:2px 0"><span style="opacity:.5;flex-shrink:0">–</span><span>$1</span></span>')
+    .replace(/\n/g, '<br/>')
+}
+
+const Bubble = memo(({ role, content }: { role: string; content: string }) => (
+  <div className={`bubble-wrap ${role}`}>
+    <div
+      className={`bubble ${role}`}
+      dangerouslySetInnerHTML={{ __html: md(content) }}
+    />
+  </div>
+))
 import {
   Sparkles, FolderOpen, Bot, Wand2, Eye, EyeOff,
   CheckCircle2, Camera, FileText, Pencil, PartyPopper,
@@ -579,11 +602,9 @@ export default function App() {
           <div className="scroll">
             <div className="messages">
               {messages.map((msg, i) => (
-                <div key={i} className={`bubble-wrap ${msg.role}`}>
-                  <div className={`bubble ${msg.role}`}>{msg.content}</div>
-                </div>
+                <Bubble key={i} role={msg.role} content={msg.content} />
               ))}
-              {streamingText && <div className="bubble-wrap assistant"><div className="bubble assistant">{streamingText}</div></div>}
+              {streamingText && <Bubble role="assistant" content={streamingText} />}
               {isStreaming && !streamingText && <div className="bubble-wrap assistant"><div className="typing"><span /><span /><span /></div></div>}
               <div ref={messagesEndRef} />
             </div>
