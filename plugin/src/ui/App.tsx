@@ -105,8 +105,12 @@ export default function App() {
       if (!msg) return
       if (msg.type === 'STORED_CREDENTIALS') {
         if (msg.figmaToken) setFigmaToken(msg.figmaToken)
-        if (msg.anthropicKey) setAnthropicKey(msg.anthropicKey)
-        // Skip onboarding and connect if already configured
+        if (msg.anthropicKey) {
+          setAnthropicKey(msg.anthropicKey)
+          if (msg.anthropicKey.startsWith('sk-ant-') && msg.anthropicKey.length >= 40) {
+            setAnthropicOAuthStatus('done')
+          }
+        }
         if (msg.figmaToken && msg.anthropicKey) setStep('files')
         else if (msg.figmaToken || msg.anthropicKey) setStep('connect')
       }
