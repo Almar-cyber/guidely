@@ -36,7 +36,8 @@ export default async function handler(req: Request): Promise<Response> {
   const statePayload = btoa(JSON.stringify({ state, codeVerifier }))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 
-  const url = new URL('https://claude.ai/oauth/authorize')
+  // Enterprise/Console accounts use console.anthropic.com (not claude.ai)
+  const url = new URL('https://console.anthropic.com/oauth/authorize')
   url.searchParams.set('client_id', CLIENT_ID)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('redirect_uri', redirectUri)
