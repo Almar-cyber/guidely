@@ -366,10 +366,18 @@ export default function App() {
                   placeholder="figd_..."
                   value={figmaTokenManual}
                   onChange={(e) => {
+                    const val = e.target.value.trim()
                     setFigmaTokenManual(e.target.value)
-                    if (e.target.value.trim().length > 10) setFigmaToken(e.target.value.trim())
+                    // Valid Figma tokens start with figd_ and are at least 40 chars
+                    if (val.startsWith('figd_') && val.length >= 40) setFigmaToken(val)
+                    else setFigmaToken('')
                   }}
                 />
+                {figmaTokenManual.length > 4 && !figmaToken && (
+                  <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 4, display: 'block' }}>
+                    Token inválido — deve começar com figd_
+                  </span>
+                )}
               </label>
             )}
 
@@ -437,8 +445,10 @@ export default function App() {
                   autoFocus
                   style={{ marginTop: 4 }}
                   onChange={(e) => {
-                    setAnthropicKey(e.target.value)
-                    if (e.target.value.startsWith('sk-ant-') && e.target.value.length > 20) {
+                    const val = e.target.value.trim()
+                    setAnthropicKey(val)
+                    // Valid Anthropic keys: sk-ant-api03-... minimum ~80 chars
+                    if (val.startsWith('sk-ant-') && val.length >= 80) {
                       setAnthropicOAuthStatus('done')
                     }
                   }}
