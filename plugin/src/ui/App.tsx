@@ -339,7 +339,10 @@ export default function App() {
   }, [messages, isStreaming, figmaContext, anthropicKey])
 
   const handleBuildFigma = () => {
-    if (!guideline) return
+    if (!guideline || !guideline.slides?.length) {
+      setBuildError('Nenhum slide para criar. Tente gerar novamente.')
+      return
+    }
     setBuildError('')
     parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline } }, '*')
   }

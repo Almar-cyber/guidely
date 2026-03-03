@@ -19,6 +19,7 @@ import {
   COLORS,
   FONTS,
   REQUIRED_FONTS,
+  OPTIONAL_FONTS,
   PAD,
 } from './templates'
 
@@ -38,9 +39,9 @@ function makeFrame(name: string): FrameNode {
 
 function makeText(content: string, size: number, font: FontName, color: RGB): TextNode {
   const t = figma.createText()
-  t.characters = content
-  t.fontSize = size
   t.fontName = font
+  t.fontSize = size
+  t.characters = content ?? ''
   t.fills = solid(color)
   t.textAutoResize = 'HEIGHT'
   return t
@@ -913,10 +914,21 @@ function buildContactSlide(
 // ─────────────────────────────────────────────
 
 export async function buildGuideline(data: GuidelineData): Promise<void> {
-  await Promise.all(REQUIRED_FONTS.map((f) => figma.loadFontAsync(f)))
+  // Load essential fonts — fail fast if unavailable
+  const fontResults = await Promise.allSettled(
+    REQUIRED_FONTS.map((f) => figma.loadFontAsync(f))
+  )
+  const essentialFailed = fontResults.find((r) => r.status === 'rejected')
+  if (essentialFailed) {
+    throw new Error('Fonte Inter não disponível. Verifique se a fonte está instalada no sistema.')
+  }
+
+  // Try optional fonts but don't fail
+  await Promise.allSettled(OPTIONAL_FONTS.map((f) => figma.loadFontAsync(f)))
 
   const page = figma.currentPage
   let slideNum = 1
+  const skipped: string[] = []
 
   data.slides.forEach((slide, i) => {
     let frame: FrameNode
@@ -953,13 +965,16 @@ export async function buildGuideline(data: GuidelineData): Promise<void> {
         frame = buildContactSlide(slide, data.title, i, slideNum++)
         break
       default:
-        // Fix #6 — skip unknown slide types gracefully
-        console.warn(`[Guidely] Tipo de slide desconhecido: ${(slide as { type: string }).type}`)
+        skipped.push(`Slide ${i + 1}: tipo "${(slide as { type: string }).type}"`)
         return
     }
 
     page.appendChild(frame)
   })
+
+  if (skipped.length) {
+    figma.notify(`⚠️ ${skipped.length} slide(s) ignorado(s): tipo desconhecido`, { timeout: 5000 })
+  }
 
   // Zoom to fit all slides
   figma.viewport.scrollAndZoomIntoView(page.children)

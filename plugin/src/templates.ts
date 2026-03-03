@@ -55,6 +55,9 @@ export const REQUIRED_FONTS = [
   FONTS.regular,
   FONTS.semiBold,
   FONTS.bold,
+]
+
+export const OPTIONAL_FONTS = [
   FONTS.extraBold,
 ]
 
