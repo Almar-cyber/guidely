@@ -39,9 +39,18 @@ export default function App() {
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [accessCode, setAccessCode] = useState('')
-  const [anthropicOAuthStatus, setAnthropicOAuthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
-  const [anthropicOAuthError, setAnthropicOAuthError] = useState('')
+  const [anthropicOAuthStatus, setAnthropicOAuthStatus] = useState<'idle' | 'guide' | 'done'>('idle')
+  const [cmdCopied, setCmdCopied] = useState(false)
   const anthropicPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const CLI_CMD = `security find-generic-password -s "Claude Code" -a "$(whoami)" -w | pbcopy`
+
+  const handleCopyCmd = () => {
+    navigator.clipboard.writeText(CLI_CMD).then(() => {
+      setCmdCopied(true)
+      setTimeout(() => setCmdCopied(false), 3000)
+    })
+  }
   const [figmaManual, setFigmaManual] = useState(false)
   const [figmaTokenManual, setFigmaTokenManual] = useState('')
   const [oauthState, setOauthState] = useState<string | null>(null)
@@ -278,7 +287,7 @@ export default function App() {
   }
 
   const figmaConnected = oauthStatus === 'done' || figmaToken.trim().length > 0
-  const anthropicConnected = anthropicOAuthStatus === 'done'
+  const anthropicConnected = anthropicOAuthStatus === 'done' && anthropicKey.length > 20
   const credentialsValid = figmaConnected && anthropicConnected
 
   return (
@@ -364,35 +373,92 @@ export default function App() {
               </label>
             )}
 
-            {/* Anthropic OAuth */}
+            {/* Claude — chave via Terminal (uma vez só) */}
             {anthropicOAuthStatus === 'done' ? (
               <div className="oauth-connected">
                 <CheckCircle2 size={15} color="var(--mp-green)" />
                 <span>Claude conectado</span>
-                <button className="link" style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-text-2)' }} onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>Trocar</button>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }}
+                  onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>
+                  Trocar
+                </button>
+              </div>
+            ) : anthropicOAuthStatus === 'guide' ? (
+              <div className="oauth-block">
+                <div className="oauth-label">Chave do Claude</div>
+
+                <div className="key-guide">
+                  <div className="key-guide-step">
+                    <span className="key-step-num">1</span>
+                    <span>Abra o <strong>Terminal</strong> <span style={{color:'var(--color-text-3)'}}>Cmd + Espaço → "Terminal"</span></span>
+                  </div>
+                  <div className="key-guide-step">
+                    <span className="key-step-num">2</span>
+                    <span>Copie e execute o comando abaixo</span>
+                  </div>
+                  <div className="key-guide-step">
+                    <span className="key-step-num">3</span>
+                    <span>A chave vai para o clipboard — cole no campo abaixo</span>
+                  </div>
+                </div>
+
+                <div style={{ position: 'relative', marginTop: 4 }}>
+                  <div style={{
+                    background: 'var(--ax-dark-100)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--r)',
+                    padding: '10px 48px 10px 12px',
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    color: 'var(--color-text-2)',
+                    lineHeight: 1.5,
+                    wordBreak: 'break-all',
+                  }}>
+                    {CLI_CMD}
+                  </div>
+                  <button
+                    onClick={handleCopyCmd}
+                    style={{
+                      position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                      background: cmdCopied ? 'var(--color-success)' : 'var(--color-primary)',
+                      border: 'none', borderRadius: 'var(--r-sm)',
+                      padding: '4px 8px', cursor: 'pointer',
+                      fontSize: 10, fontWeight: 600, color: '#fff',
+                      transition: 'background 0.2s',
+                    }}>
+                    {cmdCopied ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+
+                <input
+                  type="password"
+                  placeholder="Cole a chave aqui (sk-ant-...)"
+                  value={anthropicKey}
+                  autoFocus
+                  style={{ marginTop: 4 }}
+                  onChange={(e) => {
+                    setAnthropicKey(e.target.value)
+                    if (e.target.value.startsWith('sk-ant-') && e.target.value.length > 20) {
+                      setAnthropicOAuthStatus('done')
+                    }
+                  }}
+                />
+
+                <button className="btn-ghost btn" style={{ fontSize: 11, marginTop: 2 }}
+                  onClick={() => setAnthropicOAuthStatus('idle')}>
+                  ← Voltar
+                </button>
               </div>
             ) : (
               <div className="oauth-block">
-                <div className="oauth-label">Conta do Claude</div>
-                <div className="oauth-hint">Para gerar o guideline com IA</div>
-                {anthropicOAuthStatus === 'waiting' ? (
-                  <div className="oauth-waiting">
-                    <div className="oauth-spinner" />
-                    <span>Aguardando aprovação no browser…</span>
-                  </div>
-                ) : (
-                  <>
-                    <button className="btn oauth-btn" onClick={handleConnectAnthropic}>
-                      <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
-                        <path d="M23.5 8.9L16 4.5 8.5 8.9v8.8l7.5 4.4 7.5-4.4V8.9z" fill="#D97757"/>
-                      </svg>
-                      Conectar com Claude
-                    </button>
-                    {anthropicOAuthError && (
-                      <div className="error-card" style={{ marginTop: 6, fontSize: 12 }}>{anthropicOAuthError}</div>
-                    )}
-                  </>
-                )}
+                <div className="oauth-label">Chave do Claude</div>
+                <div className="oauth-hint">Configuração única — fica salva no plugin</div>
+                <button className="btn oauth-btn" onClick={() => setAnthropicOAuthStatus('guide')}>
+                  <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+                    <path d="M23.5 8.9L16 4.5 8.5 8.9v8.8l7.5 4.4 7.5-4.4V8.9z" fill="#D97757"/>
+                  </svg>
+                  Configurar chave do Claude
+                </button>
               </div>
             )}
 
