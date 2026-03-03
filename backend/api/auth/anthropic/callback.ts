@@ -70,7 +70,8 @@ export default async function handler(req: Request): Promise<Response> {
       url: process.env.UPSTASH_REDIS_REST_URL!,
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     })
-    await redis.setex(`anthropic_auth:${state}`, 300, tokens.access_token)
+    // Use statePayload (the full encoded string) as key — matches what poll.ts receives
+    await redis.setex(`anthropic_auth:${statePayload}`, 300, tokens.access_token)
 
     return redirect('?success=true')
   } catch (err) {
