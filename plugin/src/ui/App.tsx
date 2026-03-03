@@ -1,4 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  Sparkles, FolderOpen, Bot, Wand2, Eye, EyeOff,
+  CheckCircle2, Camera, FileText, Pencil, PartyPopper,
+  ArrowLeft, ArrowRight, Send, Copy, RotateCcw,
+  ChevronRight, Link2, Image, Layers
+} from 'lucide-react'
 import type { GuidelineData, Slide, PluginToUI } from '../types'
 import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
@@ -271,18 +277,18 @@ export default function App() {
 
   return (
     <>
-      {/* ── Onboarding (tela cheia, sem topbar) ── */}
+      {/* ── Onboarding ── */}
       {step === 'onboarding' && (
         <div className="onboarding">
-          <div className="onboarding-logo">✦</div>
+          <div className="onboarding-logo"><Sparkles size={22} color="#fff" /></div>
           <div className="onboarding-title">Guidely</div>
           <div className="onboarding-tagline">Construa guidelines simples de entender.</div>
 
           <div className="onboarding-steps">
             {[
-              { icon: '📂', label: 'Aponta para o arquivo Figma' },
-              { icon: '🤖', label: 'A IA analisa e faz perguntas' },
-              { icon: '✨', label: 'Gera slides prontos no canvas' },
+              { icon: <FolderOpen size={18} />, label: 'Aponta para o arquivo Figma' },
+              { icon: <Bot size={18} />, label: 'A IA analisa e faz perguntas' },
+              { icon: <Layers size={18} />, label: 'Gera slides prontos no canvas' },
             ].map(({ icon, label }) => (
               <div key={label} className="onboarding-step">
                 <span className="onboarding-step-icon">{icon}</span>
@@ -298,10 +304,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Topbar (oculta no onboarding) */}
+      {/* Topbar */}
       {step !== 'onboarding' && (
         <div className="topbar">
-          <div className="topbar-logo">✦</div>
+          <div className="topbar-logo"><Sparkles size={13} color="#fff" /></div>
           <span className="topbar-title">Guidely</span>
         </div>
       )}
@@ -323,7 +329,7 @@ export default function App() {
             {/* Figma — OAuth ou token manual */}
             {oauthStatus === 'done' || figmaToken ? (
               <div className="oauth-connected">
-                <span className="oauth-check">✅</span>
+                <CheckCircle2 size={15} color="var(--mp-green)" />
                 <span>Figma conectado</span>
                 <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setOauthStatus('idle'); setFigmaToken(''); setFigmaManual(false) }}>Trocar</button>
               </div>
@@ -377,7 +383,7 @@ export default function App() {
             {/* Anthropic OAuth */}
             {anthropicOAuthStatus === 'done' ? (
               <div className="oauth-connected">
-                <span className="oauth-check">✅</span>
+                <CheckCircle2 size={15} color="var(--mp-green)" />
                 <span>Claude conectado</span>
                 <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>Trocar</button>
               </div>
@@ -451,7 +457,7 @@ export default function App() {
             <button className="btn btn-primary" onClick={handleAnalyze} disabled={!refUrl.trim() && !destUrl.trim()}>
               Analisar
             </button>
-            <button className="btn-ghost btn" onClick={() => setStep('connect')}>← Voltar</button>
+            <button className="btn-ghost btn" onClick={() => setStep('connect')}><ArrowLeft size={13} /> Voltar</button>
           </div>
         </div>
       )}
@@ -478,7 +484,7 @@ export default function App() {
                   return (
                     <div key={s.id} className={`analyze-step-row ${cls}`}>
                       <div className="step-dot" />
-                      {s.label}{idx < cur ? ' ✓' : ''}
+                      {s.label}{idx < cur ? <CheckCircle2 size={12} style={{display:'inline',marginLeft:4}} color="var(--mp-green)" /> : null}
                     </div>
                   )
                 })}
@@ -514,7 +520,7 @@ export default function App() {
               rows={1}
             />
             <button className="send-btn" onClick={() => sendMessage(chatInput)} disabled={isStreaming || !chatInput.trim()}>
-              <svg width="14" height="14" viewBox="0 0 14 14"><path d="M13 1L1 5.5L5.5 7.5L7.5 13L13 1Z" /></svg>
+              <Send size={14} color="#fff" />
             </button>
           </div>
         </>
@@ -537,7 +543,7 @@ export default function App() {
                     <div className="slide-info">
                       <span className="slide-name">{slideName(slide)}</span>
                       <span className="slide-type">{slide.type}</span>
-                      {note && <span className="slide-img-note">📸 {note}</span>}
+                      {note && <span className="slide-img-note"><Camera size={10} style={{display:'inline',marginRight:3}} />{note}</span>}
                     </div>
                   </div>
                 )
@@ -546,12 +552,12 @@ export default function App() {
           </div>
           {buildError && <div style={{ padding: '0 16px 8px' }}><div className="error-card">{buildError}</div></div>}
           <div className="preview-actions">
-            <button className="btn btn-accent" onClick={handleBuildFigma}>✨ Criar slides no Figma</button>
+            <button className="btn btn-accent" onClick={handleBuildFigma}><Wand2 size={14} /> Criar slides no Figma</button>
             <div className="btn-row">
-              <button className="btn btn-outline" onClick={handleExportDoc}>📄 Exportar doc</button>
-              <button className="btn btn-outline" onClick={() => setStep('questions')}>✏️ Ajustar</button>
+              <button className="btn btn-outline" onClick={handleExportDoc}><FileText size={14} /> Exportar doc</button>
+              <button className="btn btn-outline" onClick={() => setStep('questions')}><Pencil size={14} /> Ajustar</button>
             </div>
-            <button className="btn-ghost btn" onClick={handleReset}>Novo guideline</button>
+            <button className="btn-ghost btn" onClick={handleReset}><RotateCcw size={12} /> Novo guideline</button>
           </div>
         </>
       )}
@@ -560,14 +566,14 @@ export default function App() {
       {step === 'output-figma' && (
         <div className="scroll">
           <div className="done-state">
-            <div className="done-icon">🎉</div>
+            <div className="done-icon"><PartyPopper size={40} color="var(--color-primary)" /></div>
             <div className="done-title">{guideline?.slides.length} slides criados!</div>
-            <div className="done-sub">Abra o Figma para ver os slides no canvas. Onde aparecer 📸, insira o print da tela correspondente.</div>
+            <div className="done-sub">Abra o Figma para ver os slides no canvas. Onde aparecer <Camera size={11} style={{display:'inline'}} />, insira o print da tela correspondente.</div>
             {guideline && (
               <div style={{ width: '100%', marginTop: 8 }}>
                 {guideline.slides.filter(slideImageNote).map((s, i) => (
                   <div key={i} className="info-card" style={{ marginBottom: 6 }}>
-                    <span className="info-icon">📸</span>
+                    <span className="info-icon"><Camera size={15} /></span>
                     <div className="info-body">
                       <div className="info-title">{slideName(s)}</div>
                       <div className="info-text">{slideImageNote(s)}</div>
@@ -577,8 +583,8 @@ export default function App() {
               </div>
             )}
             <div className="btn-row" style={{ marginTop: 8, width: '100%' }}>
-              <button className="btn btn-outline" onClick={handleExportDoc}>📄 Exportar doc</button>
-              <button className="btn btn-outline" onClick={handleReset}>Novo</button>
+              <button className="btn btn-outline" onClick={handleExportDoc}><FileText size={14} /> Exportar doc</button>
+              <button className="btn btn-outline" onClick={handleReset}><RotateCcw size={14} /> Novo</button>
             </div>
           </div>
         </div>
@@ -589,13 +595,13 @@ export default function App() {
         <div className="doc-output">
           <div className="doc-toolbar">
             <span className="doc-toolbar-title">Documento</span>
-            <button className="doc-copy-btn" onClick={handleCopy}>Copiar</button>
+            <button className="doc-copy-btn" onClick={handleCopy}><Copy size={11} style={{display:'inline',marginRight:4}} />Copiar</button>
           </div>
           <textarea className="doc-textarea" value={docMarkdown} readOnly />
           <div style={{ padding: '10px 16px', borderTop: '1px solid var(--color-border-2)' }}>
             <div className="btn-row">
-              <button className="btn btn-outline" onClick={() => setStep('preview')}>← Voltar</button>
-              <button className="btn btn-outline" onClick={handleReset}>Novo</button>
+              <button className="btn btn-outline" onClick={() => setStep('preview')}><ArrowLeft size={14} /> Voltar</button>
+              <button className="btn btn-outline" onClick={handleReset}><RotateCcw size={14} /> Novo</button>
             </div>
           </div>
         </div>
