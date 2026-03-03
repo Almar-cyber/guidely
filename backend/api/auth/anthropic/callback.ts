@@ -1,14 +1,16 @@
-// Step 2: Anthropic redirects here → exchange code → create API key → store in Redis
+// Troca o authorization code pelo access token
+// O access token é usado diretamente como Bearer nas chamadas à API Anthropic
 import { Redis } from '@upstash/redis'
 
 export const config = { runtime: 'edge' }
 
+const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
+
 const BASE = process.env.ANTHROPIC_REDIRECT_URI?.replace('/api/auth/anthropic/callback', '')
   ?? 'https://ux-guidelines-proxy.vercel.app'
 
-function redirect(path: string) {
-  return Response.redirect(`${BASE}/auth-result.html${path}`)
-}
+const redirect = (path: string) =>
+  Response.redirect(`${BASE}/auth-result.html${path}`)
 
 export default async function handler(req: Request): Promise<Response> {
   const { searchParams } = new URL(req.url)
@@ -20,30 +22,28 @@ export default async function handler(req: Request): Promise<Response> {
     return redirect(`?error=${error ?? 'missing_params'}`)
   }
 
-  // Decode state payload to recover codeVerifier
   let state: string, codeVerifier: string
   try {
-    const decoded = JSON.parse(atob(statePayload.replace(/-/g, '+').replace(/_/g, '/')))
+    const decoded = JSON.parse(
+      atob(statePayload.replace(/-/g, '+').replace(/_/g, '/'))
+    )
     state = decoded.state
     codeVerifier = decoded.codeVerifier
   } catch {
     return redirect('?error=invalid_state')
   }
 
-  const clientId = process.env.ANTHROPIC_CLIENT_ID!
-  const clientSecret = process.env.ANTHROPIC_CLIENT_SECRET ?? ''
   const redirectUri = process.env.ANTHROPIC_REDIRECT_URI
     ?? `${BASE}/api/auth/anthropic/callback`
 
   try {
-    // 1. Exchange authorization code for access token
+    // Exchange code for access token
     const tokenRes = await fetch('https://console.anthropic.com/v1/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: clientId,
-        ...(clientSecret ? { client_secret: clientSecret } : {}),
+        client_id: CLIENT_ID,
         code,
         redirect_uri: redirectUri,
         code_verifier: codeVerifier,
@@ -55,36 +55,22 @@ export default async function handler(req: Request): Promise<Response> {
       return redirect('?error=token_exchange_failed')
     }
 
-    const { access_token } = await tokenRes.json() as { access_token: string }
-
-    // 2. Use access token to create a permanent API key
-    const keyRes = await fetch('https://api.anthropic.com/api/oauth/create_api_key', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${access_token}`,
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({ name: 'Guidely Plugin' }),
-    })
-
-    if (!keyRes.ok) {
-      console.error('Key creation failed:', await keyRes.text())
-      return redirect('?error=key_creation_failed')
+    const tokens = await tokenRes.json() as {
+      access_token: string
+      refresh_token?: string
+      expires_in?: number
     }
 
-    const { key } = await keyRes.json() as { key: string }
-
-    // 3. Store key in Redis (5 min TTL, one-time use)
+    // Store access token in Redis (5 min TTL, one-time use)
     const redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL!,
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     })
-    await redis.setex(`anthropic_auth:${state}`, 300, key)
+    await redis.setex(`anthropic_auth:${state}`, 300, tokens.access_token)
 
     return redirect('?success=true')
   } catch (err) {
-    console.error('Anthropic auth callback error:', err)
+    console.error('Anthropic callback error:', err)
     return redirect('?error=server_error')
   }
 }

@@ -605,6 +605,20 @@
       font-weight: var(--fw-semibold);
     }
     .oauth-check { font-size: 14px; }
+    .oauth-divider {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-8);
+      font-size: var(--font-10);
+      color: var(--color-text-3);
+      margin: var(--sp-4) 0;
+    }
+    .oauth-divider::before, .oauth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--color-border);
+    }
 
     /* ─── Key guide steps ─── */
     .key-guide {

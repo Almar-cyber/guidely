@@ -374,20 +374,51 @@ export default function App() {
               </div>
             )}
 
-            {/* Código de acesso da equipe */}
-            <label>
-              Código de acesso
-              <span className="hint">Peça para o admin da equipe</span>
-              <input
-                type="password"
-                placeholder="guidely-ccap-****"
-                value={accessCode}
-                onChange={(e) => {
-                  setAccessCode(e.target.value)
-                  setAnthropicKey(e.target.value) // access code is sent as anthropic key header
-                }}
-              />
-            </label>
+            {/* Anthropic OAuth */}
+            {anthropicOAuthStatus === 'done' ? (
+              <div className="oauth-connected">
+                <span className="oauth-check">✅</span>
+                <span>Claude conectado</span>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>Trocar</button>
+              </div>
+            ) : (
+              <div className="oauth-block">
+                <div className="oauth-label">Conta do Claude</div>
+                <div className="oauth-hint">Para gerar o guideline com IA</div>
+                {anthropicOAuthStatus === 'waiting' ? (
+                  <div className="oauth-waiting">
+                    <div className="oauth-spinner" />
+                    <span>Aguardando aprovação no browser…</span>
+                  </div>
+                ) : (
+                  <>
+                    <button className="btn oauth-btn" onClick={handleConnectAnthropic}>
+                      <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+                        <path d="M23.5 8.9L16 4.5 8.5 8.9v8.8l7.5 4.4 7.5-4.4V8.9z" fill="#D97757"/>
+                      </svg>
+                      Conectar com Claude
+                    </button>
+                    {anthropicOAuthError && (
+                      <div className="error-card" style={{ marginTop: 6, fontSize: 12 }}>{anthropicOAuthError}</div>
+                    )}
+                    <div className="oauth-divider">ou</div>
+                    <label style={{ marginTop: 0 }}>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-2)', fontWeight: 400 }}>Código de acesso da equipe</span>
+                      <input
+                        type="password"
+                        placeholder="guidely-ccap-****"
+                        value={accessCode}
+                        onChange={(e) => {
+                          setAccessCode(e.target.value)
+                          setAnthropicKey(e.target.value)
+                          if (e.target.value.trim().length > 4) setAnthropicOAuthStatus('done')
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
 
             <button className="btn btn-primary" onClick={handleSaveCredentials} disabled={!credentialsValid}>
               Continuar

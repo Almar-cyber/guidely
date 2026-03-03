@@ -98,10 +98,16 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(null, { headers: corsHeaders(req) })
   }
 
-  // Access code sent by plugin — validate against env var
-  const accessCode = req.headers.get('X-Anthropic-Key') ?? ''
-  const validCode = process.env.ACCESS_CODE
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  // Token sent by plugin — can be:
+  // 1. OAuth access token from claude.ai (starts with sk-ant-oat or similar)
+  // 2. Team access code validated against env var
+  const userToken = req.headers.get('X-Anthropic-Key') ?? ''
+  const accessCode = process.env.ACCESS_CODE
+  const backendKey = process.env.ANTHROPIC_API_KEY
+
+  // If user sent an OAuth token directly, use it; otherwise use backend key + validate access code
+  const isOAuthToken = userToken.startsWith('sk-ant-oat') || userToken.length > 100
+  const apiKey = isOAuthToken ? userToken : backendKey
 
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Backend não configurado. Fale com o admin.' }), {
@@ -110,7 +116,7 @@ export default async function handler(req: Request): Promise<Response> {
     })
   }
 
-  if (validCode && accessCode !== validCode) {
+  if (!isOAuthToken && accessCode && userToken !== accessCode) {
     return new Response(JSON.stringify({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
