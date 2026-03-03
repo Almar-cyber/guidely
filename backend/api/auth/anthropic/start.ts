@@ -1,5 +1,5 @@
-// Anthropic OAuth — mesmo client_id usado pelo Claude Code e ferramentas open-source
-// Referência: https://github.com/taciturnaxolotl/anthropic-api-key
+import { Redis } from '@upstash/redis'
+
 export const config = { runtime: 'edge' }
 
 const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
@@ -25,7 +25,6 @@ async function s256(verifier: string): Promise<string> {
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
-  // Auto-detect from request host if env var not set
   const host = new URL(req.url).origin
   const redirectUri = process.env.ANTHROPIC_REDIRECT_URI
     ?? `${host}/api/auth/anthropic/callback`
@@ -34,21 +33,23 @@ export default async function handler(req: Request): Promise<Response> {
   const codeVerifier = randomBase64url(48)
   const codeChallenge = await s256(codeVerifier)
 
-  // Encode verifier in state so callback can retrieve it (stateless)
-  const statePayload = btoa(JSON.stringify({ state, codeVerifier }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+  // Store codeVerifier in Redis keyed by state (2 min TTL)
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  })
+  await redis.setex(`pkce:${state}`, 120, codeVerifier)
 
-  // Enterprise/Console accounts use console.anthropic.com (not claude.ai)
   const url = new URL('https://console.anthropic.com/oauth/authorize')
   url.searchParams.set('client_id', CLIENT_ID)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('redirect_uri', redirectUri)
   url.searchParams.set('scope', 'org:create_api_key user:profile user:inference')
-  url.searchParams.set('state', statePayload)
+  url.searchParams.set('state', state)
   url.searchParams.set('code_challenge', codeChallenge)
   url.searchParams.set('code_challenge_method', 'S256')
 
-  return new Response(JSON.stringify({ url: url.toString(), state: statePayload }), {
+  return new Response(JSON.stringify({ url: url.toString(), state }), {
     headers: { 'Content-Type': 'application/json', ...CORS },
   })
 }

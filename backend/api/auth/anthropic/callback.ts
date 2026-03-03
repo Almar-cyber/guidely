@@ -1,12 +1,9 @@
-// Troca o authorization code pelo access token
-// O access token é usado diretamente como Bearer nas chamadas à API Anthropic
 import { Redis } from '@upstash/redis'
 
 export const config = { runtime: 'edge' }
 
 const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
 
-// Auto-detect base URL from request if env var not set
 function getBase(req: Request): string {
   return process.env.ANTHROPIC_REDIRECT_URI?.replace('/api/auth/anthropic/callback', '')
     ?? new URL(req.url).origin
@@ -14,34 +11,32 @@ function getBase(req: Request): string {
 
 export default async function handler(req: Request): Promise<Response> {
   const BASE = getBase(req)
-  const redirect = (path: string) =>
-    Response.redirect(`${BASE}/auth-result.html${path}`)
+  const redirect = (path: string) => Response.redirect(`${BASE}/auth-result.html${path}`)
 
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
-  const statePayload = searchParams.get('state')
+  const state = searchParams.get('state')
   const error = searchParams.get('error')
 
-  if (error || !code || !statePayload) {
+  if (error || !code || !state) {
     return redirect(`?error=${error ?? 'missing_params'}`)
   }
 
-  let state: string, codeVerifier: string
-  try {
-    const decoded = JSON.parse(
-      atob(statePayload.replace(/-/g, '+').replace(/_/g, '/'))
-    )
-    state = decoded.state
-    codeVerifier = decoded.codeVerifier
-  } catch {
-    return redirect('?error=invalid_state')
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  })
+
+  // Retrieve codeVerifier stored by start.ts
+  const codeVerifier = await redis.get<string>(`pkce:${state}`)
+  if (!codeVerifier) {
+    return redirect('?error=state_expired')
   }
 
   const redirectUri = process.env.ANTHROPIC_REDIRECT_URI
-    ?? `${BASE}/api/auth/anthropic/callback`
+    ?? `${new URL(req.url).origin}/api/auth/anthropic/callback`
 
   try {
-    // Exchange code for access token
     const tokenRes = await fetch('https://console.anthropic.com/v1/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -55,23 +50,16 @@ export default async function handler(req: Request): Promise<Response> {
     })
 
     if (!tokenRes.ok) {
-      console.error('Token exchange failed:', await tokenRes.text())
+      const errText = await tokenRes.text()
+      console.error('Token exchange failed:', tokenRes.status, errText)
       return redirect('?error=token_exchange_failed')
     }
 
-    const tokens = await tokenRes.json() as {
-      access_token: string
-      refresh_token?: string
-      expires_in?: number
-    }
+    const tokens = await tokenRes.json() as { access_token: string }
 
-    // Store access token in Redis (5 min TTL, one-time use)
-    const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    })
-    // Use statePayload (the full encoded string) as key — matches what poll.ts receives
-    await redis.setex(`anthropic_auth:${statePayload}`, 300, tokens.access_token)
+    // Store access token keyed by state (5 min TTL, one-time use)
+    await redis.setex(`anthropic_auth:${state}`, 300, tokens.access_token)
+    await redis.del(`pkce:${state}`)
 
     return redirect('?success=true')
   } catch (err) {
