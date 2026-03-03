@@ -27,6 +27,19 @@ ${figmaContext ? `You have already read the designer's Figma files. Here is the 
 3. When you have enough information (usually after 2–4 exchanges), call \`generate_guideline\`.
 4. If the designer says "gerar", "generate", "pronto" or similar → generate immediately.
 
+## Quick reply options (IMPORTANT)
+
+When asking a question that has **predefined options** (yes/no, choice between values, select countries, etc.), append this tag at the very end of your message:
+
+<options>["Option A", "Option B", "Option C"]</options>
+
+Rules:
+- Maximum 4 options
+- Short labels (2–5 words each)
+- Only for closed questions — not for open-ended ones
+- Always in the same language as the conversation
+- Examples: countries (["MLB 🇧🇷", "MLA 🇦🇷", "MLM 🇲🇽", "Todos"]), yes/no (["Sim, inclui", "Não, coming soon"]), versions (["V1", "Coming soon"])
+
 ## Guideline structure (always include all relevant sections)
 
 - **cover**: title, subtitle (what it is in one line), team, version

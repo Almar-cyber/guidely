@@ -1,5 +1,18 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react'
 
+// Extract quick reply options from message
+function extractOptions(text: string): { clean: string; options: string[] } {
+  const match = text.match(/<options>(\[.*?\])<\/options>/s)
+  if (!match) return { clean: text.trim(), options: [] }
+  try {
+    const options = JSON.parse(match[1]) as string[]
+    const clean = text.replace(/<options>.*?<\/options>/s, '').trim()
+    return { clean, options }
+  } catch {
+    return { clean: text.trim(), options: [] }
+  }
+}
+
 // Simple markdown renderer
 function md(text: string): string {
   return text
@@ -105,6 +118,7 @@ export default function App() {
   const [streamingText, setStreamingText] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [quickOptions, setQuickOptions] = useState<string[]>([])
 
   const [guideline, setGuideline] = useState<GuidelineData | null>(null)
   const [buildError, setBuildError] = useState('')
@@ -266,7 +280,12 @@ export default function App() {
       },
       onError: (m) => { setStreamingText(''); setIsStreaming(false); setMessages((p) => [...p, { role: 'assistant', content: m }]) },
       onDone: () => {
-        if (text) { setMessages((p) => [...p, { role: 'assistant', content: text }]); setStreamingText('') }
+        if (text) {
+          const { clean, options } = extractOptions(text)
+          setMessages((p) => [...p, { role: 'assistant', content: clean }])
+          setQuickOptions(options)
+          setStreamingText('')
+        }
         setIsStreaming(false)
       },
     })
@@ -278,6 +297,7 @@ export default function App() {
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setChatInput('')
+    setQuickOptions([])
     setIsStreaming(true)
     setStreamingText('')
     let assistantText = ''
@@ -292,7 +312,12 @@ export default function App() {
       },
       onError: (m) => { setStreamingText(''); setIsStreaming(false); setMessages((p) => [...p, { role: 'assistant', content: m }]) },
       onDone: () => {
-        if (assistantText) { setMessages((p) => [...p, { role: 'assistant', content: assistantText }]); setStreamingText('') }
+        if (assistantText) {
+          const { clean, options } = extractOptions(assistantText)
+          setMessages((p) => [...p, { role: 'assistant', content: clean }])
+          setQuickOptions(options)
+          setStreamingText('')
+        }
         setIsStreaming(false)
       },
     })
@@ -609,6 +634,16 @@ export default function App() {
               <div ref={messagesEndRef} />
             </div>
           </div>
+          {quickOptions.length > 0 && !isStreaming && (
+            <div className="quick-options">
+              {quickOptions.map((opt) => (
+                <button key={opt} className="quick-option-btn" onClick={() => sendMessage(opt)}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="chat-input-bar">
             <textarea
               className="chat-textarea"

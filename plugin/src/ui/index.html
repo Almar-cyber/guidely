@@ -441,6 +441,35 @@
       30%{transform:translateY(-4px);opacity:1}
     }
 
+    /* ─── Quick reply chips ─── */
+    .quick-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-6);
+      padding: var(--sp-8) var(--sp-10) var(--sp-4);
+      border-top: 1px solid var(--color-border-2);
+      background: var(--color-bg);
+    }
+    .quick-option-btn {
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--r-full);
+      padding: var(--sp-6) var(--sp-12);
+      font-size: var(--font-12);
+      font-weight: var(--fw-semibold);
+      font-family: var(--font);
+      color: var(--color-text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .quick-option-btn:hover {
+      background: var(--color-primary-bg);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+    .quick-option-btn:active { transform: scale(0.97); }
+
     /* ─── Chat input ─── */
     .chat-input-bar {
       border-top: 1px solid var(--color-border-2);
