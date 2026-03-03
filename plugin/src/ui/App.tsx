@@ -380,7 +380,7 @@ export default function App() {
               <label>
                 Token do Figma
                 <span className="hint">
-                  Figma → Settings → Account → Security → Personal Access Tokens &nbsp;
+                  Settings → Account → Security → Personal Access Tokens → selecione escopo <strong>File content: Read</strong> &nbsp;
                   <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>Abrir <ArrowRight size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
                 </span>
                 <input
