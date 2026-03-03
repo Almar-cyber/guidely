@@ -2,17 +2,9 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const config = { runtime: 'edge' }
 
-// Fix #11 — restrict CORS to Figma plugin origins only
-const ALLOWED_ORIGINS = [
-  'https://www.figma.com',
-  'null', // Figma plugin iframe has null origin
-]
-
-function corsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get('origin') ?? ''
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : 'null'
+function corsHeaders(): Record<string, string> {
   return {
-    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Anthropic-Key',
   }
@@ -95,7 +87,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders(req) })
+    return new Response(null, { headers: corsHeaders() })
   }
 
   // Token sent by plugin — can be:
@@ -160,7 +152,7 @@ export default async function handler(req: Request): Promise<Response> {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      ...corsHeaders(req),
+      ...corsHeaders(),
     },
   })
 }
