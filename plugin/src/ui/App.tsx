@@ -18,6 +18,12 @@ const STEP_PROGRESS: Record<Step, number> = {
   'output-figma': 100, 'output-doc': 100,
 }
 
+const STEP_LABEL: Record<Step, string> = {
+  onboarding: '', connect: '1 de 5', files: '2 de 5', analyzing: '3 de 5',
+  questions: '4 de 5', preview: '5 de 5',
+  'output-figma': '5 de 5', 'output-doc': '5 de 5',
+}
+
 function slideName(s: Slide): string {
   if ('title' in s) return (s as { title: string }).title
   if (s.type === 'contact') return (s as { channel: string }).channel
@@ -288,7 +294,7 @@ export default function App() {
             {[
               { icon: <FolderOpen size={18} />, label: 'Aponta para o arquivo Figma' },
               { icon: <Bot size={18} />, label: 'A IA analisa e faz perguntas' },
-              { icon: <Layers size={18} />, label: 'Gera slides prontos no canvas' },
+              { icon: <Layers size={18} />, label: 'Receba slides prontos' },
             ].map(({ icon, label }) => (
               <div key={label} className="onboarding-step">
                 <span className="onboarding-step-icon">{icon}</span>
@@ -307,8 +313,14 @@ export default function App() {
       {/* Topbar */}
       {step !== 'onboarding' && (
         <div className="topbar">
-          <div className="topbar-logo"><Sparkles size={13} color="#fff" /></div>
-          <span className="topbar-title">Guidely</span>
+          <div className="topbar-left">
+            <div className="topbar-logo"><Sparkles size={13} color="#fff" /></div>
+            <span className="topbar-title">Guidely</span>
+          </div>
+          <div className="topbar-right">
+            <span className="topbar-badge">Beta</span>
+            <span className="topbar-step">{STEP_LABEL[step]}</span>
+          </div>
         </div>
       )}
 
@@ -326,58 +338,30 @@ export default function App() {
             <div className="step-title">Conectar contas</div>
             <div className="step-sub">Salvas só no seu computador. Nunca enviadas a terceiros.</div>
 
-            {/* Figma — OAuth ou token manual */}
-            {oauthStatus === 'done' || figmaToken ? (
+            {/* Figma — token manual */}
+            {figmaToken ? (
               <div className="oauth-connected">
                 <CheckCircle2 size={15} color="var(--mp-green)" />
                 <span>Figma conectado</span>
-                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setOauthStatus('idle'); setFigmaToken(''); setFigmaManual(false) }}>Trocar</button>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setFigmaToken(''); setFigmaTokenManual('') }}>Trocar</button>
               </div>
-            ) : figmaManual ? (
+            ) : (
               <label>
                 Token do Figma
                 <span className="hint">
-                  Settings → Account → Personal Access Tokens &nbsp;
-                  <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>Abrir →</span>
+                  Figma → Settings → Account → Personal Access Tokens &nbsp;
+                  <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>Abrir <ArrowRight size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
                 </span>
                 <input
                   type="text"
                   placeholder="figd_..."
                   value={figmaTokenManual}
-                  autoFocus
                   onChange={(e) => {
                     setFigmaTokenManual(e.target.value)
                     if (e.target.value.trim().length > 10) setFigmaToken(e.target.value.trim())
                   }}
                 />
               </label>
-            ) : (
-              <div className="oauth-block">
-                <div className="oauth-label">Conta do Figma</div>
-                <div className="oauth-hint">Para ler seus arquivos de design</div>
-                {oauthStatus === 'waiting' ? (
-                  <div className="oauth-waiting">
-                    <div className="oauth-spinner" />
-                    <span>Aguardando aprovação no browser…</span>
-                  </div>
-                ) : (
-                  <>
-                    <button className="btn oauth-btn" onClick={handleConnectFigma}>
-                      <svg width="16" height="16" viewBox="0 0 38 57" fill="none">
-                        <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
-                        <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5v9.5A9.5 9.5 0 0 1 9.5 47.5z" fill="#0ACF83"/>
-                        <path d="M0 28.5A9.5 9.5 0 0 1 9.5 19H19v19H9.5A9.5 9.5 0 0 1 0 28.5z" fill="#FF7262"/>
-                        <path d="M0 9.5A9.5 9.5 0 0 1 9.5 0H19v19H9.5A9.5 9.5 0 0 1 0 9.5z" fill="#F24E1E"/>
-                        <path d="M19 0h9.5A9.5 9.5 0 0 1 28.5 19H19V0z" fill="#FF7262"/>
-                      </svg>
-                      Conectar com Figma
-                    </button>
-                    <button className="btn-ghost btn" style={{ fontSize: 11 }} onClick={() => setFigmaManual(true)}>
-                      Usar token manualmente
-                    </button>
-                  </>
-                )}
-              </div>
             )}
 
             {/* Anthropic OAuth */}

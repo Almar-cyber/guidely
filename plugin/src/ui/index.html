@@ -140,11 +140,21 @@
     .topbar {
       display: flex;
       align-items: center;
-      gap: var(--sp-8);
+      justify-content: space-between;
       padding: var(--sp-12) var(--sp-16);
       border-bottom: 1px solid var(--color-border-2);
       flex-shrink: 0;
       background: var(--ax-dark-300);
+    }
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-8);
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-8);
     }
     .topbar-logo {
       width: 22px; height: 22px;
@@ -157,7 +167,6 @@
     .topbar-title {
       font-size: var(--font-14);
       font-weight: var(--fw-bold);
-      flex: 1;
       letter-spacing: -0.1px;
     }
     .topbar-badge {
@@ -171,10 +180,7 @@
     }
     .topbar-step {
       font-size: var(--font-10);
-      color: var(--color-text-2);
-      background: var(--color-surface);
-      padding: 2px var(--sp-8);
-      border-radius: var(--r-full);
+      color: var(--color-text-3);
     }
     .link {
       color: var(--color-primary);
