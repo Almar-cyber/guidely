@@ -343,7 +343,7 @@ export default function App() {
               <div className="oauth-connected">
                 <CheckCircle2 size={15} color="var(--mp-green)" />
                 <span>Figma conectado</span>
-                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setFigmaToken(''); setFigmaTokenManual('') }}>Trocar</button>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-text-2)' }} onClick={() => { setFigmaToken(''); setFigmaTokenManual('') }}>Trocar</button>
               </div>
             ) : (
               <label>
@@ -369,7 +369,7 @@ export default function App() {
               <div className="oauth-connected">
                 <CheckCircle2 size={15} color="var(--mp-green)" />
                 <span>Claude conectado</span>
-                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>Trocar</button>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-text-2)' }} onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>Trocar</button>
               </div>
             ) : (
               <div className="oauth-block">
