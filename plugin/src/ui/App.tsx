@@ -26,9 +26,12 @@ export default function App() {
 
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
+  const [accessCode, setAccessCode] = useState('')
   const [anthropicOAuthStatus, setAnthropicOAuthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
   const [anthropicOAuthError, setAnthropicOAuthError] = useState('')
   const anthropicPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [figmaManual, setFigmaManual] = useState(false)
+  const [figmaTokenManual, setFigmaTokenManual] = useState('')
   const [oauthState, setOauthState] = useState<string | null>(null)
   const [oauthStatus, setOauthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
   const [oauthError, setOauthError] = useState('')
@@ -100,7 +103,7 @@ export default function App() {
         if (attempts > 150) {
           clearInterval(anthropicPollRef.current!)
           setAnthropicOAuthStatus('error')
-          setAnthropicOAuthError('Tempo esgotado. Tente conectar novamente.')
+          setAnthropicOAuthError('Tempo esgotado. Tente novamente.')
           return
         }
         try {
@@ -112,9 +115,9 @@ export default function App() {
           }
         } catch { /* keep polling */ }
       }, 2000)
-    } catch (err) {
-      setAnthropicOAuthStatus('error')
-      setAnthropicOAuthError(err instanceof Error ? err.message : 'Erro ao conectar com Anthropic.')
+    } catch {
+      // OAuth not available — fall back to access code
+      setAnthropicOAuthStatus('idle')
     }
   }
 
@@ -126,15 +129,13 @@ export default function App() {
       setOauthState(state)
       window.open(url, '_blank')
 
-      // Poll every 2s for up to 5 minutes
       let attempts = 0
-      const MAX = 150
       pollRef.current = setInterval(async () => {
         attempts++
-        if (attempts > MAX) {
+        if (attempts > 150) {
           clearInterval(pollRef.current!)
-          setOauthStatus('error')
-          setOauthError('Tempo esgotado. Tente conectar novamente.')
+          setOauthStatus('idle')
+          setFigmaManual(true) // fallback to manual token
           return
         }
         try {
@@ -146,9 +147,10 @@ export default function App() {
           }
         } catch { /* keep polling */ }
       }, 2000)
-    } catch (err) {
-      setOauthStatus('error')
-      setOauthError(err instanceof Error ? err.message : 'Erro ao conectar com Figma.')
+    } catch {
+      // Backend not deployed yet — fall back to manual token input
+      setOauthStatus('idle')
+      setFigmaManual(true)
     }
   }
 
@@ -264,7 +266,7 @@ export default function App() {
   }
 
   const figmaConnected = oauthStatus === 'done' || figmaToken.trim().length > 0
-  const anthropicConnected = anthropicOAuthStatus === 'done' || (anthropicKey.trim().length > 20)
+  const anthropicConnected = accessCode.trim().length > 4
   const credentialsValid = figmaConnected && anthropicConnected
 
   return (
@@ -318,8 +320,32 @@ export default function App() {
             <div className="step-title">Conectar contas</div>
             <div className="step-sub">Salvas só no seu computador. Nunca enviadas a terceiros.</div>
 
-            {/* Figma OAuth */}
-            {oauthStatus !== 'done' ? (
+            {/* Figma — OAuth ou token manual */}
+            {oauthStatus === 'done' || figmaToken ? (
+              <div className="oauth-connected">
+                <span className="oauth-check">✅</span>
+                <span>Figma conectado</span>
+                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setOauthStatus('idle'); setFigmaToken(''); setFigmaManual(false) }}>Trocar</button>
+              </div>
+            ) : figmaManual ? (
+              <label>
+                Token do Figma
+                <span className="hint">
+                  Settings → Account → Personal Access Tokens &nbsp;
+                  <span className="link" onClick={() => window.open('https://www.figma.com/settings', '_blank')}>Abrir →</span>
+                </span>
+                <input
+                  type="text"
+                  placeholder="figd_..."
+                  value={figmaTokenManual}
+                  autoFocus
+                  onChange={(e) => {
+                    setFigmaTokenManual(e.target.value)
+                    if (e.target.value.trim().length > 10) setFigmaToken(e.target.value.trim())
+                  }}
+                />
+              </label>
+            ) : (
               <div className="oauth-block">
                 <div className="oauth-label">Conta do Figma</div>
                 <div className="oauth-hint">Para ler seus arquivos de design</div>
@@ -329,58 +355,39 @@ export default function App() {
                     <span>Aguardando aprovação no browser…</span>
                   </div>
                 ) : (
-                  <button className="btn oauth-btn" onClick={handleConnectFigma}>
-                    <svg width="16" height="16" viewBox="0 0 38 57" fill="none">
-                      <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
-                      <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5v9.5A9.5 9.5 0 0 1 9.5 47.5z" fill="#0ACF83"/>
-                      <path d="M0 28.5A9.5 9.5 0 0 1 9.5 19H19v19H9.5A9.5 9.5 0 0 1 0 28.5z" fill="#FF7262"/>
-                      <path d="M0 9.5A9.5 9.5 0 0 1 9.5 0H19v19H9.5A9.5 9.5 0 0 1 0 9.5z" fill="#F24E1E"/>
-                      <path d="M19 0h9.5A9.5 9.5 0 0 1 28.5 19H19V0z" fill="#FF7262"/>
-                    </svg>
-                    Conectar com Figma
-                  </button>
+                  <>
+                    <button className="btn oauth-btn" onClick={handleConnectFigma}>
+                      <svg width="16" height="16" viewBox="0 0 38 57" fill="none">
+                        <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
+                        <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5v9.5A9.5 9.5 0 0 1 9.5 47.5z" fill="#0ACF83"/>
+                        <path d="M0 28.5A9.5 9.5 0 0 1 9.5 19H19v19H9.5A9.5 9.5 0 0 1 0 28.5z" fill="#FF7262"/>
+                        <path d="M0 9.5A9.5 9.5 0 0 1 9.5 0H19v19H9.5A9.5 9.5 0 0 1 0 9.5z" fill="#F24E1E"/>
+                        <path d="M19 0h9.5A9.5 9.5 0 0 1 28.5 19H19V0z" fill="#FF7262"/>
+                      </svg>
+                      Conectar com Figma
+                    </button>
+                    <button className="btn-ghost btn" style={{ fontSize: 11 }} onClick={() => setFigmaManual(true)}>
+                      Usar token manualmente
+                    </button>
+                  </>
                 )}
-                {oauthStatus === 'error' && (
-                  <div className="error-card" style={{ marginTop: 8, fontSize: 12 }}>{oauthError}</div>
-                )}
-              </div>
-            ) : (
-              <div className="oauth-connected">
-                <span className="oauth-check">✅</span>
-                <span>Figma conectado</span>
-                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setOauthStatus('idle'); setFigmaToken('') }}>Trocar</button>
               </div>
             )}
 
-            {/* Anthropic OAuth */}
-            {anthropicOAuthStatus !== 'done' ? (
-              <div className="oauth-block">
-                <div className="oauth-label">Conta do Claude</div>
-                <div className="oauth-hint">Para gerar o guideline com IA</div>
-                {anthropicOAuthStatus === 'waiting' ? (
-                  <div className="oauth-waiting">
-                    <div className="oauth-spinner" />
-                    <span>Aguardando aprovação no browser…</span>
-                  </div>
-                ) : (
-                  <button className="btn oauth-btn" onClick={handleConnectAnthropic}>
-                    <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
-                      <path d="M23.5 8.9L16 4.5 8.5 8.9v8.8l7.5 4.4 7.5-4.4V8.9z" fill="#D97757"/>
-                    </svg>
-                    Conectar com Claude
-                  </button>
-                )}
-                {anthropicOAuthStatus === 'error' && (
-                  <div className="error-card" style={{ marginTop: 8, fontSize: 12 }}>{anthropicOAuthError}</div>
-                )}
-              </div>
-            ) : (
-              <div className="oauth-connected">
-                <span className="oauth-check">✅</span>
-                <span>Claude conectado</span>
-                <button className="link" style={{ marginLeft: 'auto', fontSize: 11 }} onClick={() => { setAnthropicOAuthStatus('idle'); setAnthropicKey('') }}>Trocar</button>
-              </div>
-            )}
+            {/* Código de acesso da equipe */}
+            <label>
+              Código de acesso
+              <span className="hint">Peça para o admin da equipe</span>
+              <input
+                type="password"
+                placeholder="guidely-ccap-****"
+                value={accessCode}
+                onChange={(e) => {
+                  setAccessCode(e.target.value)
+                  setAnthropicKey(e.target.value) // access code is sent as anthropic key header
+                }}
+              />
+            </label>
 
             <button className="btn btn-primary" onClick={handleSaveCredentials} disabled={!credentialsValid}>
               Continuar

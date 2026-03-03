@@ -98,10 +98,20 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(null, { headers: corsHeaders(req) })
   }
 
-  // Key comes from the plugin (user's own key), fallback to env var for local dev
-  const apiKey = req.headers.get('X-Anthropic-Key') ?? process.env.ANTHROPIC_API_KEY
+  // Access code sent by plugin — validate against env var
+  const accessCode = req.headers.get('X-Anthropic-Key') ?? ''
+  const validCode = process.env.ACCESS_CODE
+  const apiKey = process.env.ANTHROPIC_API_KEY
+
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Chave da API Anthropic não encontrada. Configure-a nas configurações do Guidely.' }), {
+    return new Response(JSON.stringify({ error: 'Backend não configurado. Fale com o admin.' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (validCode && accessCode !== validCode) {
+    return new Response(JSON.stringify({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     })
