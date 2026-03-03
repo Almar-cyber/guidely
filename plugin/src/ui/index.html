@@ -380,6 +380,20 @@
     .analyze-step-row.active .step-dot { background: var(--color-primary); animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
 
+    /* ─── Chat layout wrapper ─── */
+    .chat-layout {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .chat-layout .scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
     /* ─── Chat ─── */
     .messages {
       display: flex; flex-direction: column; gap: var(--sp-10);

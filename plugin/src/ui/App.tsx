@@ -598,7 +598,7 @@ export default function App() {
 
       {/* ── Perguntas ── */}
       {step === 'questions' && (
-        <>
+        <div className="chat-layout">
           <div className="scroll">
             <div className="messages">
               {messages.map((msg, i) => (
@@ -624,7 +624,7 @@ export default function App() {
               <Send size={14} color="#fff" />
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Preview ── */}
