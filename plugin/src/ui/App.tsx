@@ -322,24 +322,18 @@ export default function App() {
       },
       onDone: () => {
         if (guidelineReceived) {
-          // Tool already handled everything
           setIsStreaming(false)
+          setIsGenerating(false)
           return
         }
         if (assistantText) {
           const { clean, options } = extractOptions(assistantText)
-          // If Claude said it was generating but tool didn't arrive yet, show spinner
-          const isGeneratingKeywords = /gerando|generating|criando|vou gerar/i.test(clean)
           setMessages((p) => [...p, { role: 'assistant', content: clean }])
           setQuickOptions(options)
           setStreamingText('')
-          if (isGeneratingKeywords) {
-            setIsGenerating(true)
-            setIsStreaming(true)
-            return // Keep streaming state — tool result is still coming
-          }
         }
         setIsStreaming(false)
+        setIsGenerating(false)
       },
     })
   }, [messages, isStreaming, figmaContext, anthropicKey])

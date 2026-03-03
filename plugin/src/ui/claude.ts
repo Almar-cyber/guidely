@@ -163,9 +163,13 @@ export async function streamChat(
         if (type === 'content_block_stop' && inToolUse) {
           inToolUse = false
           try {
-            cb.onGuideline(JSON.parse(toolInputAccum))
-          } catch {
-            cb.onError('O guideline gerado tem formato inválido. Tente novamente ou reformule suas respostas.')
+            const parsed = JSON.parse(toolInputAccum)
+            cb.onGuideline(parsed)
+          } catch (e) {
+            // Show actual error to help diagnose
+            const errMsg = String(e).slice(0, 120)
+            const jsonLen = toolInputAccum.length
+            cb.onError(`Erro ao processar guideline (${errMsg}) — JSON length: ${jsonLen}. Tente escrever "gerar" novamente.`)
           }
         }
 
