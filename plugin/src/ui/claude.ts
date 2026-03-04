@@ -55,24 +55,46 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
         break
 
       case 'anatomy':
-        if (!isStr(s.title) || !Array.isArray(s.components) || !s.components.every((c) => isObj(c) && isNum(c.index) && isStr(c.name) && isBool(c.required))) {
+        if (!isStr(s.title) || !Array.isArray(s.components)) {
           return { ok: false, error: `Slide ${i + 1}: anatomy inválido` }
         }
+        // Normalize index (accept string or number) and required (accept string or boolean)
+        s.components = (s.components as Record<string, unknown>[]).map((c, ci) => ({
+          ...c,
+          index: isNum(c.index) ? c.index : isStr(c.index) ? parseInt(c.index, 10) || ci + 1 : ci + 1,
+          name: isStr(c.name) ? c.name : `Componente ${ci + 1}`,
+          required: isBool(c.required) ? c.required : c.required === 'true' || c.required === 'Obrigatório',
+        }))
         break
 
       case 'use_case_map':
-        if (!isStr(s.title) || !isStringArray(s.caseNames) || s.caseNames.length === 0) {
-          return { ok: false, error: `Slide ${i + 1}: use_case_map inválido` }
+        if (!isStr(s.title)) {
+          return { ok: false, error: `Slide ${i + 1}: use_case_map sem title` }
         }
-        if (!Array.isArray(s.rows) || !s.rows.every((r) => isObj(r) && isStr(r.component) && isObj(r.cases))) {
-          return { ok: false, error: `Slide ${i + 1}: use_case_map rows inválidos` }
+        // Normalize caseNames — accept array of strings or extract from rows
+        if (!isStringArray(s.caseNames) || s.caseNames.length === 0) {
+          if (Array.isArray(s.rows) && s.rows.length > 0) {
+            const firstRow = s.rows[0] as Record<string, unknown>
+            s.caseNames = firstRow?.cases ? Object.keys(firstRow.cases as Record<string, unknown>) : ['CDU']
+          } else {
+            s.caseNames = ['CDU']
+          }
         }
+        // Normalize rows — accept missing cases
+        if (!Array.isArray(s.rows)) s.rows = []
+        s.rows = (s.rows as Record<string, unknown>[]).map((r) => ({
+          component: isStr(r.component) ? r.component : String(r.component ?? 'Componente'),
+          cases: isObj(r.cases) ? r.cases : {},
+        }))
         break
 
       case 'use_case':
-        if (!isStr(s.title) || !isStr(s.body) || !isStringArray(s.components)) {
-          return { ok: false, error: `Slide ${i + 1}: use_case inválido` }
+        if (!isStr(s.title)) {
+          return { ok: false, error: `Slide ${i + 1}: use_case sem title` }
         }
+        // Normalize body and components
+        if (!isStr(s.body)) s.body = ''
+        if (!isStringArray(s.components)) s.components = []
         break
 
       case 'behavior':
@@ -88,9 +110,23 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
         break
 
       case 'wording':
-        if (!isStr(s.title) || !Array.isArray(s.errors) || !s.errors.every((e) => isObj(e) && isStr(e.name) && isStr(e.objective) && Array.isArray(e.variants) && e.variants.every((v) => isObj(v) && isStr(v.country) && isStr(v.flag) && isStr(v.text)))) {
-          return { ok: false, error: `Slide ${i + 1}: wording inválido` }
+        if (!isStr(s.title)) {
+          return { ok: false, error: `Slide ${i + 1}: wording sem title` }
         }
+        if (!Array.isArray(s.errors)) s.errors = []
+        // Normalize each error entry
+        s.errors = (s.errors as Record<string, unknown>[]).map((e) => ({
+          name: isStr(e.name) ? e.name : 'Erro',
+          objective: isStr(e.objective) ? e.objective : '',
+          variants: Array.isArray(e.variants)
+            ? (e.variants as Record<string, unknown>[]).map((v) => ({
+                country: isStr(v.country) ? v.country : '',
+                flag: isStr(v.flag) ? v.flag : '🌎',
+                text: isStr(v.text) ? v.text : '',
+              }))
+            : [],
+          rationale: isStr(e.rationale) ? e.rationale : undefined,
+        }))
         break
 
       case 'contact':
