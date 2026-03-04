@@ -1,10 +1,10 @@
 const BASE_URL = 'https://guidely-mu.vercel.app'
-const STREAM_TOTAL_TIMEOUT_MS = 180000
-const STREAM_IDLE_TIMEOUT_MS = 45000
-const STREAM_MAX_TOTAL_TIMEOUT_MS = 1200000
-const STREAM_MAX_IDLE_TIMEOUT_MS = 180000
+const STREAM_TOTAL_TIMEOUT_MS = 300000
+const STREAM_IDLE_TIMEOUT_MS = 120000
+const STREAM_MAX_TOTAL_TIMEOUT_MS = 1800000
+const STREAM_MAX_IDLE_TIMEOUT_MS = 420000
 const STREAM_TIMEOUT_RETRY_LIMIT = 2
-const RETRY_CONTEXT_LIMITS = [70000, 50000, 32000]
+const RETRY_CONTEXT_LIMITS = [50000, 32000, 18000]
 
 // Lightweight validation without pulling in zod — keeps bundle small and sandbox-compatible
 function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: false; error: string } {
@@ -203,13 +203,13 @@ function computeStreamTimeouts(figmaContext: string, messages: Message[]): { idl
   const messageChars = estimateMessageChars(messages)
 
   const idleMs = clamp(
-    STREAM_IDLE_TIMEOUT_MS + contextFactor * 12000 + Math.floor(messageChars / 220),
+    STREAM_IDLE_TIMEOUT_MS + contextFactor * 20000 + Math.floor(messageChars / 180),
     STREAM_IDLE_TIMEOUT_MS,
     STREAM_MAX_IDLE_TIMEOUT_MS
   )
 
   const totalMs = clamp(
-    STREAM_TOTAL_TIMEOUT_MS + contextFactor * 40000 + Math.floor(messageChars / 55),
+    STREAM_TOTAL_TIMEOUT_MS + contextFactor * 60000 + Math.floor(messageChars / 40),
     STREAM_TOTAL_TIMEOUT_MS,
     STREAM_MAX_TOTAL_TIMEOUT_MS
   )
@@ -229,6 +229,7 @@ export async function streamChat(
   const effectiveContext = compactContextForRetry(figmaContext, contextLimit)
   const { idleMs, totalMs } = computeStreamTimeouts(effectiveContext, messages)
   const controller = new AbortController()
+  let abortReason: 'idle' | 'total' | null = null
   let totalTimeout: ReturnType<typeof setTimeout> | null = null
   let idleTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -239,10 +240,16 @@ export async function streamChat(
 
   const refreshIdleWatchdog = () => {
     if (idleTimeout) clearTimeout(idleTimeout)
-    idleTimeout = setTimeout(() => controller.abort(), idleMs)
+    idleTimeout = setTimeout(() => {
+      abortReason = 'idle'
+      controller.abort()
+    }, idleMs)
   }
 
-  totalTimeout = setTimeout(() => controller.abort(), totalMs)
+  totalTimeout = setTimeout(() => {
+    abortReason = 'total'
+    controller.abort()
+  }, totalMs)
 
   let res: Response
   try {
@@ -413,13 +420,18 @@ export async function streamChat(
   } catch {
     clearWatchdogs()
     if (controller.signal.aborted) {
-      const canRetry = !hasReceivedData && attempt < STREAM_TIMEOUT_RETRY_LIMIT
+      const canRetry = attempt < STREAM_TIMEOUT_RETRY_LIMIT && !guidelineEmitted
       if (canRetry) {
         await streamChat(messages, figmaContext, anthropicKey, cb, attempt + 1)
         return
       }
 
       const attemptInfo = attempt > 0 ? ` após ${attempt + 1} tentativas automáticas` : ''
+      if (abortReason === 'idle') {
+        cb.onError(`A geração ficou sem atividade por ${Math.round(idleMs / 1000)}s${attemptInfo}. Clique em gerar novamente para continuar.`)
+        return
+      }
+
       cb.onError(`Tempo limite da geração (${Math.round(totalMs / 1000)}s)${attemptInfo}. Clique em gerar novamente para continuar.`)
       return
     }
