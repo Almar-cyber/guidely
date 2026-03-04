@@ -51,7 +51,9 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
 }
 
 const MAX_CONTEXT_CHARS = 70000
+const MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION = 38000
 const MAX_MESSAGES = 16
+const MAX_MESSAGES_FOR_FORCED_GENERATION = 10
 const MAX_MESSAGE_TEXT_CHARS = 5000
 
 function truncateText(text: string, maxChars: number): string {
@@ -59,11 +61,11 @@ function truncateText(text: string, maxChars: number): string {
   return `${text.slice(0, maxChars - 1)}…`
 }
 
-function compactFigmaContext(context: string): string {
-  if (context.length <= MAX_CONTEXT_CHARS) return context
+function compactFigmaContext(context: string, maxChars = MAX_CONTEXT_CHARS): string {
+  if (context.length <= maxChars) return context
 
-  const headSize = Math.floor(MAX_CONTEXT_CHARS * 0.78)
-  const tailSize = Math.floor(MAX_CONTEXT_CHARS * 0.16)
+  const headSize = Math.floor(maxChars * 0.78)
+  const tailSize = Math.floor(maxChars * 0.16)
   const head = context.slice(0, headSize)
   const tail = context.slice(-tailSize)
 
@@ -89,9 +91,9 @@ function compactMessageContent(content: Anthropic.MessageParam['content']): Anth
   })
 }
 
-function compactMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
-  const sliced = messages.length > MAX_MESSAGES
-    ? [messages[0], ...messages.slice(-(MAX_MESSAGES - 1))]
+function compactMessages(messages: Anthropic.MessageParam[], maxMessages = MAX_MESSAGES): Anthropic.MessageParam[] {
+  const sliced = messages.length > maxMessages
+    ? [messages[0], ...messages.slice(-(maxMessages - 1))]
     : messages
 
   return sliced.map((msg) => ({
@@ -100,10 +102,20 @@ function compactMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageP
   }))
 }
 
-function buildSystemPrompt(figmaContext: string): string {
+function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean): string {
   return `You are a UX Documentation Specialist at Mercado Pago, expert in creating complete guidelines for leadership and stakeholders following the Andes X design system.
 
 ${figmaContext ? `You have already read the designer's Figma files. Here is the extracted content:\n\n<figma_content>\n${figmaContext}\n</figma_content>\n\nUse this content as the primary source for generating the guideline. Only ask questions about information NOT clearly present in the Figma content.` : ''}
+
+${forceGenerationNow ? `## Generation mode (strict)
+
+The user explicitly asked to generate now.
+
+- Call \`generate_guideline\` in this response.
+- Do NOT ask additional questions.
+- Keep content concise and complete.
+- If any detail is missing, use \"A confirmar\" placeholders and continue.
+` : ''}
 
 ## Your process
 
@@ -381,9 +393,15 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonResponse({ error: 'Payload inválido: messages é obrigatório.' }, 400)
     }
 
-    const compactedMessages = compactMessages(messages)
-    const compactedFigmaContext = compactFigmaContext(figmaContext)
-    const forceGuidelineTool = shouldForceGuidelineTool(compactedMessages)
+    const forceGuidelineTool = shouldForceGuidelineTool(messages)
+    const compactedMessages = compactMessages(
+      messages,
+      forceGuidelineTool ? MAX_MESSAGES_FOR_FORCED_GENERATION : MAX_MESSAGES
+    )
+    const compactedFigmaContext = compactFigmaContext(
+      figmaContext,
+      forceGuidelineTool ? MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION : MAX_CONTEXT_CHARS
+    )
     const client = new Anthropic({ apiKey })
 
     let stream: Awaited<ReturnType<typeof client.messages.stream>>
@@ -391,7 +409,7 @@ export default async function handler(req: Request): Promise<Response> {
       stream = await client.messages.stream({
         model: 'claude-sonnet-4-6',
         max_tokens: 8096,
-        system: buildSystemPrompt(compactedFigmaContext),
+        system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool),
         tools: [GENERATE_GUIDELINE_TOOL],
         tool_choice: forceGuidelineTool
           ? { type: 'tool', name: 'generate_guideline' }

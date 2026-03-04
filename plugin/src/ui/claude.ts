@@ -261,6 +261,19 @@ export async function streamChat(
     })
   } catch {
     clearWatchdogs()
+    if (controller.signal.aborted) {
+      const canRetry = attempt < STREAM_TIMEOUT_RETRY_LIMIT
+      if (canRetry) {
+        await streamChat(messages, figmaContext, anthropicKey, cb, attempt + 1)
+        return
+      }
+
+      const attemptInfo = attempt > 0 ? ` após ${attempt + 1} tentativas automáticas` : ''
+      if (abortReason === 'total') {
+        cb.onError(`Tempo limite da geração (${Math.round(totalMs / 1000)}s)${attemptInfo}. Clique em gerar novamente para continuar.`)
+        return
+      }
+    }
     cb.onError('Sem conexão com o servidor. Verifique sua internet e tente novamente.')
     return
   }
