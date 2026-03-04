@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
+    "build:local": "GUIDELY_BASE_URL=http://localhost:3000 node build.mjs",
     "watch": "node build.mjs --watch",
+    "watch:local": "GUIDELY_BASE_URL=http://localhost:3000 node build.mjs --watch",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/ui/tsconfig.json"
   },
   "devDependencies": {

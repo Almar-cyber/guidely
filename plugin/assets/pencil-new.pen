@@ -3733,58 +3733,6 @@
                           "content": "Conectar com Claude"
                         }
                       }
-                    },
-                    {
-                      "id": "GEwmw",
-                      "type": "ref",
-                      "ref": "TvQq0",
-                      "width": "fill_container",
-                      "name": "divider2",
-                      "descendants": {
-                        "UOHOd": {
-                          "content": "ou"
-                        }
-                      }
-                    },
-                    {
-                      "type": "text",
-                      "id": "CRUxh",
-                      "name": "accessLabel",
-                      "fill": "$color-text-2",
-                      "content": "Código de acesso da equipe",
-                      "fontFamily": "Inter",
-                      "fontSize": 11,
-                      "fontWeight": "$fw-regular"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "CTGpO",
-                      "name": "accessInput",
-                      "width": "fill_container",
-                      "fill": "$color-surface",
-                      "cornerRadius": "$r",
-                      "stroke": {
-                        "align": "inside",
-                        "thickness": 1.5,
-                        "fill": "$color-border"
-                      },
-                      "padding": [
-                        8,
-                        12
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "XmiFC",
-                          "name": "accessPlaceholder",
-                          "fill": "$color-text-3",
-                          "content": "guidely-ccap-****",
-                          "fontFamily": "Inter",
-                          "fontSize": "$font-14",
-                          "fontWeight": "$fw-regular"
-                        }
-                      ]
                     }
                   ]
                 },
@@ -6011,7 +5959,8 @@
               "content": "Gere guidelines de UX profissionais\ncom IA direto no Figma",
               "lineHeight": 1.4,
               "fontFamily": "Inter",
-              "fontSize": 24
+              "fontSize": 24,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -6702,7 +6651,8 @@
           "content": "Conecte suas contas, cole a URL do arquivo Figma e a IA cuida do resto.",
           "textAlign": "center",
           "fontFamily": "Inter",
-          "fontSize": 18
+          "fontSize": 18,
+          "fontWeight": "normal"
         },
         {
           "type": "frame",
@@ -7500,7 +7450,8 @@
               "content": "Claude analisa os arquivos Figma e conversa com você para entender o contexto completo do componente.",
               "textAlign": "center",
               "fontFamily": "Inter",
-              "fontSize": 18
+              "fontSize": 18,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -7760,7 +7711,8 @@
               "content": "Revise os slides gerados, crie no canvas do Figma com um clique, ou exporte como documento Markdown.",
               "textAlign": "center",
               "fontFamily": "Inter",
-              "fontSize": 18
+              "fontSize": 18,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -8357,6 +8309,866 @@
                   }
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "RDgn1",
+      "x": 3620,
+      "y": 0,
+      "name": "📊 Slides v2.0 - 1920x1080",
+      "width": 1920,
+      "height": 120,
+      "fill": "#1a1b3a",
+      "layout": "vertical",
+      "padding": 40,
+      "justifyContent": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "Jqcl8",
+          "name": "sectionTitle",
+          "fill": "#ffffff",
+          "content": "📊 Slides Guidely v2.0 (1920x1080)",
+          "fontFamily": "Inter",
+          "fontSize": 36,
+          "fontWeight": "800"
+        },
+        {
+          "type": "text",
+          "id": "eIRQc",
+          "name": "sectionDesc",
+          "fill": "#9292b0",
+          "content": "Slides profissionais com fontes legíveis e formato moderno (16:9)",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "RQOJb",
+      "x": 3620,
+      "y": 220,
+      "name": "1. Cover Slide",
+      "width": 1920,
+      "height": 1080,
+      "fill": "#0f1027",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "ymIrc",
+          "x": 100,
+          "y": 80,
+          "name": "Accent",
+          "width": 100,
+          "height": 6,
+          "fill": "#00b4d8"
+        },
+        {
+          "type": "frame",
+          "id": "74KhN",
+          "x": 100,
+          "y": 290,
+          "name": "Content",
+          "width": 1720,
+          "fill": "#00000000",
+          "layout": "vertical",
+          "gap": 32,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "npxbB",
+              "name": "coverLabel",
+              "fill": "#00b4d8",
+              "content": "GUIDELINE",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "600",
+              "letterSpacing": 4
+            },
+            {
+              "type": "text",
+              "id": "tO494",
+              "name": "coverTitle",
+              "fill": "#ffffff",
+              "content": "Tela de Confirmação",
+              "lineHeight": 1.1,
+              "textAlign": "center",
+              "fontFamily": "Inter",
+              "fontSize": 120,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "6vSmG",
+              "name": "coverSubtitle",
+              "fill": "#9292b0",
+              "content": "Boas práticas de design e implementação",
+              "lineHeight": 1.4,
+              "textAlign": "center",
+              "fontFamily": "Inter",
+              "fontSize": 48,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "bYasP",
+              "name": "Spacer",
+              "width": 1,
+              "height": 60,
+              "fill": "#00000000"
+            },
+            {
+              "type": "text",
+              "id": "RPQEG",
+              "name": "coverMeta",
+              "fill": "#6b6b85",
+              "content": "CCAP Design  ·  v2.0",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "600"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "XJZAl",
+      "x": 5640,
+      "y": 220,
+      "name": "2. Anatomy Slide",
+      "width": 1920,
+      "height": 1080,
+      "fill": "#f5f5f7",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "mGBW9",
+          "x": 0,
+          "y": 0,
+          "name": "Header bar",
+          "width": 1920,
+          "height": 72,
+          "fill": "#0f1027",
+          "padding": [
+            24,
+            100
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "jNwzn",
+              "name": "anatomyHeaderLabel",
+              "fill": "#9292b0",
+              "content": "GUIDELINE - TELA DE CONFIRMAÇÃO",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "600",
+              "letterSpacing": 2
+            },
+            {
+              "type": "text",
+              "id": "VxJ1V",
+              "name": "anatomyHeaderNum",
+              "fill": "#9292b0",
+              "content": "3",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ARW0g",
+          "x": 100,
+          "y": 152,
+          "name": "Content",
+          "width": 1720,
+          "fill": "#00000000",
+          "layout": "vertical",
+          "gap": 32,
+          "children": [
+            {
+              "type": "text",
+              "id": "qrFwg",
+              "name": "anatomySection",
+              "fill": "#00b4d8",
+              "content": "1 · ESTRUTURA BASE",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "600",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "4owE5",
+              "name": "anatomyTitle",
+              "fill": "#1a1a1a",
+              "content": "Anatomia da tela",
+              "fontFamily": "Inter",
+              "fontSize": 72,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "rtBhV",
+              "name": "anatomyBody",
+              "fill": "#6b6b85",
+              "content": "Componentes principais que formam a estrutura básica.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "FK0kc",
+              "name": "Divider",
+              "width": "fill_container",
+              "height": 1,
+              "fill": "#d1d1d6"
+            },
+            {
+              "type": "frame",
+              "id": "NwrsX",
+              "name": "Components",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lvAdj",
+                  "name": "Component 1",
+                  "width": "fill_container",
+                  "fill": "#f9f9fb",
+                  "cornerRadius": 12,
+                  "gap": 16,
+                  "padding": [
+                    16,
+                    24
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "EdmJI",
+                      "name": "anatomyNum1",
+                      "fill": "#00b4d8",
+                      "content": "1",
+                      "fontFamily": "Inter",
+                      "fontSize": 28,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "AKY7p",
+                      "name": "anatomyName1",
+                      "fill": "#1a1a1a",
+                      "content": "Header",
+                      "fontFamily": "Inter",
+                      "fontSize": 28,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "BE9h9",
+                      "name": "Tag",
+                      "fill": "#e5f2f7",
+                      "cornerRadius": 100,
+                      "padding": [
+                        8,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "DqOXX",
+                          "name": "anatomyTagText1",
+                          "fill": "#006b8a",
+                          "content": "Obrigatório",
+                          "fontFamily": "Inter",
+                          "fontSize": 24,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "OV9hj",
+                  "name": "Component 2",
+                  "width": "fill_container",
+                  "fill": "#f9f9fb",
+                  "cornerRadius": 12,
+                  "gap": 16,
+                  "padding": [
+                    16,
+                    24
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MXE4f",
+                      "name": "anatomyNum2",
+                      "fill": "#00b4d8",
+                      "content": "2",
+                      "fontFamily": "Inter",
+                      "fontSize": 28,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "gMq8m",
+                      "name": "anatomyName2",
+                      "fill": "#1a1a1a",
+                      "content": "Conteúdo principal",
+                      "fontFamily": "Inter",
+                      "fontSize": 28,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Gs22o",
+                      "name": "Tag",
+                      "fill": "#e5f2f7",
+                      "cornerRadius": 100,
+                      "padding": [
+                        8,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "0SZH4",
+                          "name": "anatomyTagText2",
+                          "fill": "#006b8a",
+                          "content": "Obrigatório",
+                          "fontFamily": "Inter",
+                          "fontSize": 24,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GZz7X",
+                  "name": "Component 3",
+                  "width": "fill_container",
+                  "fill": "#f9f9fb",
+                  "cornerRadius": 12,
+                  "gap": 16,
+                  "padding": [
+                    16,
+                    24
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gjQaO",
+                      "name": "anatomyNum3",
+                      "fill": "#00b4d8",
+                      "content": "3",
+                      "fontFamily": "Inter",
+                      "fontSize": 28,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "NNPvQ",
+                      "name": "anatomyName3",
+                      "fill": "#1a1a1a",
+                      "content": "Botões de ação",
+                      "fontFamily": "Inter",
+                      "fontSize": 28,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Nu84G",
+                      "name": "Tag",
+                      "fill": "#f5f5f5",
+                      "cornerRadius": 100,
+                      "padding": [
+                        8,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tpamr",
+                          "name": "anatomyTagText3",
+                          "fill": "#6b6b85",
+                          "content": "Optativo",
+                          "fontFamily": "Inter",
+                          "fontSize": 24,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "vylKl",
+      "x": 7660,
+      "y": 220,
+      "name": "3. Do/Dont Slide",
+      "width": 1920,
+      "height": 1080,
+      "fill": "#f5f5f7",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "VeRBY",
+          "x": 0,
+          "y": 0,
+          "name": "Header bar",
+          "width": 1920,
+          "height": 72,
+          "fill": "#0f1027",
+          "padding": [
+            24,
+            100
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "clPGJ",
+              "name": "ddHeaderLabel",
+              "fill": "#9292b0",
+              "content": "GUIDELINE - TELA DE CONFIRMAÇÃO",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "600",
+              "letterSpacing": 2
+            },
+            {
+              "type": "text",
+              "id": "Z6w6h",
+              "name": "ddHeaderNum",
+              "fill": "#9292b0",
+              "content": "6",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "UFFtf",
+          "x": 100,
+          "y": 152,
+          "name": "Content",
+          "width": 1720,
+          "fill": "#00000000",
+          "layout": "vertical",
+          "gap": 32,
+          "children": [
+            {
+              "type": "text",
+              "id": "SXuGF",
+              "name": "ddTitle",
+              "fill": "#1a1a1a",
+              "content": "Boas práticas",
+              "fontFamily": "Inter",
+              "fontSize": 72,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "QWFeu",
+              "name": "Divider",
+              "width": "fill_container",
+              "height": 1,
+              "fill": "#d1d1d6"
+            },
+            {
+              "type": "frame",
+              "id": "qvRGQ",
+              "name": "Columns",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "gap": 48,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "4xqme",
+                  "name": "Do",
+                  "fill": "#e6f7ed",
+                  "cornerRadius": 16,
+                  "stroke": {
+                    "thickness": 2,
+                    "fill": "#00a551"
+                  },
+                  "layout": "vertical",
+                  "gap": 32,
+                  "padding": [
+                    40,
+                    48
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p102a",
+                      "name": "doHeader",
+                      "fill": "#006629",
+                      "content": "✅  Faça",
+                      "fontFamily": "Inter",
+                      "fontSize": 32,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DH8FD",
+                      "name": "Item",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "KlAf7",
+                          "name": "doDot1",
+                          "fill": "#6b6b85",
+                          "content": "•",
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "HiQE2",
+                          "name": "doText1",
+                          "fill": "#1a1a1a",
+                          "content": "Use mensagens claras e diretas",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DhBT8",
+                      "name": "Item",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "3a5kQ",
+                          "name": "doDot2",
+                          "fill": "#6b6b85",
+                          "content": "•",
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sphno",
+                          "name": "doText2",
+                          "fill": "#1a1a1a",
+                          "content": "Destaque a ação primária",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "bUqUW",
+                      "name": "Item",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "t9841",
+                          "name": "doDot3",
+                          "fill": "#6b6b85",
+                          "content": "•",
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "JQYdV",
+                          "name": "doText3",
+                          "fill": "#1a1a1a",
+                          "content": "Forneça feedback visual claro",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "L5Oae",
+                  "name": "Dont",
+                  "fill": "#fee",
+                  "cornerRadius": 16,
+                  "stroke": {
+                    "thickness": 2,
+                    "fill": "#d32f2f"
+                  },
+                  "layout": "vertical",
+                  "gap": 32,
+                  "padding": [
+                    40,
+                    48
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hSk9G",
+                      "name": "dontHeader",
+                      "fill": "#bf1912",
+                      "content": "❌  Evite",
+                      "fontFamily": "Inter",
+                      "fontSize": 32,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fvpka",
+                      "name": "Item",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "nP6KS",
+                          "name": "dontDot1",
+                          "fill": "#6b6b85",
+                          "content": "•",
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ZOVoj",
+                          "name": "dontText1",
+                          "fill": "#1a1a1a",
+                          "content": "Usar jargão técnico desnecessário",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SCkIc",
+                      "name": "Item",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "thDC5",
+                          "name": "dontDot2",
+                          "fill": "#6b6b85",
+                          "content": "•",
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "UmuQR",
+                          "name": "dontText2",
+                          "fill": "#1a1a1a",
+                          "content": "Colocar múltiplas ações primárias",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "b9u3c",
+                      "name": "Item",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Zy0LU",
+                          "name": "dontDot3",
+                          "fill": "#6b6b85",
+                          "content": "•",
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "rQFE1",
+                          "name": "dontText3",
+                          "fill": "#1a1a1a",
+                          "content": "Ocultar informações importantes",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Inter",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Oe8qY",
+      "x": 9680,
+      "y": 220,
+      "name": "4. Contact Slide",
+      "width": 1920,
+      "height": 1080,
+      "fill": "#0f1027",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "u8l0j",
+          "x": 100,
+          "y": 213,
+          "name": "Content",
+          "width": 1720,
+          "fill": "#00000000",
+          "layout": "vertical",
+          "gap": 48,
+          "children": [
+            {
+              "type": "frame",
+              "id": "7Ov8R",
+              "name": "Accent",
+              "width": 100,
+              "height": 6,
+              "fill": "#434be4"
+            },
+            {
+              "type": "text",
+              "id": "pzSTC",
+              "name": "contactTitle",
+              "fill": "#ffffff",
+              "content": "Comentários, dúvidas\nou feedback?",
+              "lineHeight": 1.2,
+              "fontFamily": "Inter",
+              "fontSize": 80,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "P06oE",
+              "name": "contactSub",
+              "fill": "#9292b0",
+              "content": "Envie uma mensagem no nosso canal do Slack.",
+              "textAlign": "center",
+              "fontFamily": "Inter",
+              "fontSize": 32,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "ucTIs",
+              "name": "contactChannel",
+              "fill": "#434be4",
+              "content": "#ccap-design-system",
+              "fontFamily": "Inter",
+              "fontSize": 36,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "2kYxA",
+              "name": "Spacer",
+              "width": 1,
+              "height": 32,
+              "fill": "#00000000"
+            },
+            {
+              "type": "text",
+              "id": "PyXi9",
+              "name": "contactLinksTitle",
+              "fill": "#6b6b85",
+              "content": "LINKS ÚTEIS",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "600",
+              "letterSpacing": 2
+            },
+            {
+              "type": "text",
+              "id": "iDNiX",
+              "name": "contactLink1",
+              "fill": "#7a8fc2",
+              "content": "🔗  Figma Design System",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "bsY03",
+              "name": "contactLink2",
+              "fill": "#7a8fc2",
+              "content": "🔗  Documentação",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "600"
             }
           ]
         }

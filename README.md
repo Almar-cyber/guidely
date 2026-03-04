@@ -87,25 +87,32 @@ Copie a URL gerada (ex: `https://guidely-proxy.vercel.app`).
 
 ### 2. Plugin
 
-Atualize a URL do proxy em dois lugares:
+Atualize o `allowedDomains` no manifest:
 
 **`plugin/manifest.json`**
 ```json
 "networkAccess": {
-  "allowedDomains": ["https://guidely-proxy.vercel.app"]
+  "allowedDomains": [
+    "https://guidely-mu.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+  ]
 }
 ```
 
-**`plugin/src/ui/claude.ts`** (linha 1)
-```ts
-const BASE_URL = 'https://guidely-proxy.vercel.app'
-```
+O backend do plugin é definido em **build-time** via `GUIDELY_BASE_URL` (não precisa editar `claude.ts` manualmente).
 
 Instale e compile:
 ```bash
 cd plugin
 npm install
 npm run build
+```
+
+Para build local apontando para `localhost:3000`:
+
+```bash
+npm run build:local
 ```
 
 ---
@@ -149,16 +156,28 @@ O visual dos slides segue o padrão do **CHO PX Guideline** com tokens **Andes X
 ## Desenvolvimento local
 
 ```bash
-# Build com watch
-cd plugin
-npm run watch
-
-# Backend local
+# Terminal 1 — Backend local (porta 3000)
 cd backend
-npx vercel dev
+npm install
+npm run dev
+
+# Terminal 2 — Plugin apontando para localhost
+cd plugin
+npm install
+npm run watch:local
 ```
 
-Para testar sem deploy, altere `BASE_URL` em `claude.ts` para `http://localhost:3000`.
+Com isso, o plugin já compila com `GUIDELY_BASE_URL=http://localhost:3000` automaticamente (sem editar `claude.ts`).
+
+### Checklist rápido de teste em dev
+
+1. Abra Figma Desktop e reimporte `plugin/manifest.json` em **Plugins → Development → Import plugin from manifest**.
+2. Execute o fluxo completo: onboarding → conectar tokens → selecionar arquivos → gerar guideline → preview.
+3. Clique em **Criar no Figma** e valide:
+   - progresso de build aparecendo por etapas;
+   - timeout com mensagem clara, sem duplicar slides;
+   - tentativa imediata durante build ativa retornando erro de concorrência (sem iniciar segunda geração);
+   - reset limpando estado transitório da conversa.
 
 ---
 

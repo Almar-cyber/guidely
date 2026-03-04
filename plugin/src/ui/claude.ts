@@ -1,4 +1,11 @@
-const BASE_URL = 'https://guidely-mu.vercel.app'
+declare const __GUIDELY_BASE_URL__: string
+
+const DEFAULT_BASE_URL = 'https://guidely-mu.vercel.app'
+const BASE_URL = (
+  typeof __GUIDELY_BASE_URL__ === 'string' && __GUIDELY_BASE_URL__.trim()
+    ? __GUIDELY_BASE_URL__
+    : DEFAULT_BASE_URL
+).replace(/\/+$/, '')
 const STREAM_TOTAL_TIMEOUT_MS = 300000
 const STREAM_IDLE_TIMEOUT_MS = 120000
 const STREAM_FIRST_BYTE_TIMEOUT_MS = 45000
@@ -568,10 +575,17 @@ export async function streamChat(
       cb.onError(`Tempo limite da geração (${Math.round(totalMs / 1000)}s)${attemptInfo}. Clique em gerar novamente para continuar.`)
       return
     }
+    // Network interruption — retry automatically (not just for timeouts)
+    const canRetryNetwork = attempt < STREAM_TIMEOUT_RETRY_LIMIT && !guidelineEmitted
+    if (canRetryNetwork) {
+      await streamChat(messages, figmaContext, anthropicKey, cb, options, attempt + 1)
+      return
+    }
+    const attemptInfo = attempt > 0 ? ` (${attempt + 1}ª tentativa)` : ''
     if (!hasReceivedData) {
-      cb.onError('Conexão interrompida antes de receber resposta. Tente novamente.')
+      cb.onError(`Sem conexão com o servidor${attemptInfo}. Verifique sua internet.`)
     } else {
-      cb.onError('Conexão interrompida durante a resposta. Parte do conteúdo pode ter se perdido.')
+      cb.onError(`Conexão interrompida durante a geração${attemptInfo}. Tente escrever "gerar" novamente.`)
     }
     return
   }

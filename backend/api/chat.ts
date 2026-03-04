@@ -50,8 +50,8 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
   return /(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)
 }
 
-const MAX_CONTEXT_CHARS = 70000
-const MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION = 38000
+const MAX_CONTEXT_CHARS = 50000
+const MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION = 28000  // smaller = faster generation = fits in Vercel 30s limit
 const MAX_MESSAGES = 16
 const MAX_MESSAGES_FOR_FORCED_GENERATION = 10
 const MAX_MESSAGE_TEXT_CHARS = 5000
@@ -114,8 +114,10 @@ The user explicitly asked to generate now.
 
 - Call \`generate_guideline\` in this response.
 - Do NOT ask additional questions.
-- Keep content concise and complete.
-- If any detail is missing, use \"A confirmar\" placeholders and continue.
+- **IMPORTANT: Keep the total number of slides under 15.** Merge similar slides if needed.
+- Keep each slide's content concise — max 3-4 items per list, max 2 sentences per body.
+- If any detail is missing, use "A confirmar" placeholders and continue.
+- Prioritize completeness over verbosity.
 ` : ''}
 
 ## Your process
