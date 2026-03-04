@@ -45,6 +45,40 @@ import type { GuidelineData, Slide, PluginToUI } from '../types'
 import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
 
+function GeneratingIndicator() {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const steps = [
+    { at: 0, label: 'Organizando estrutura dos slides…' },
+    { at: 8, label: 'Montando conteúdo de cada slide…' },
+    { at: 20, label: 'Finalizando detalhes…' },
+  ]
+  const current = [...steps].reverse().find((s) => elapsed >= s.at)!
+  const estimated = 30
+  const pct = Math.min(95, Math.round((elapsed / estimated) * 100))
+  return (
+    <div className="bubble-wrap assistant">
+      <div className="bubble assistant" style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="oauth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+          <span style={{ fontWeight: 600 }}>{current.label}</span>
+        </div>
+        <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--color-primary)', borderRadius: 2, transition: 'width 1s linear' }} />
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--color-text-3)' }}>
+          {elapsed < estimated
+            ? `~${estimated - elapsed}s restantes`
+            : 'Quase pronto…'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 type Step = 'onboarding' | 'connect' | 'files' | 'analyzing' | 'questions' | 'preview' | 'output-figma' | 'output-doc'
 type AnalyzeStatus = 'reading-ref' | 'reading-dest' | 'done'
 
@@ -123,15 +157,18 @@ export default function App() {
 
   const [guideline, setGuideline] = useState<GuidelineData | null>(null)
   const [buildError, setBuildError] = useState('')
+  const [isBuilding, setIsBuilding] = useState(false)
   const [docMarkdown, setDocMarkdown] = useState('')
   const [docCopied, setDocCopied] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const buildTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Cleanup polling on unmount
+  // Cleanup polling/timeouts on unmount
   useEffect(() => () => {
     if (pollRef.current) clearInterval(pollRef.current)
     if (anthropicPollRef.current) clearInterval(anthropicPollRef.current)
+    if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
   }, [])
 
   useEffect(() => {
@@ -153,8 +190,8 @@ export default function App() {
         if (msg.figmaToken && msg.anthropicKey) setStep('files')
         else if (msg.figmaToken || msg.anthropicKey) setStep('connect')
       }
-      if (msg.type === 'BUILD_COMPLETE') setStep('output-figma')
-      if (msg.type === 'BUILD_ERROR') { setBuildError(msg.message); setStep('preview') }
+      if (msg.type === 'BUILD_COMPLETE') { setIsBuilding(false); setStep('output-figma') }
+      if (msg.type === 'BUILD_ERROR') { setIsBuilding(false); setBuildError(msg.message); setStep('preview') }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
@@ -273,14 +310,16 @@ export default function App() {
     let text = ''
     streamChat([init], context, anthropicKey, {
       onText: (d) => { text += d; setStreamingText(text) },
+      onGenerating: () => { setStreamingText(''); setIsGenerating(true) },
       onGuideline: (data) => {
         setGuideline(data as GuidelineData)
         setStreamingText('')
         setIsStreaming(false)
+        setIsGenerating(false)
         setMessages((p) => [...p, { role: 'assistant', content: 'Guideline pronto.' }])
         setStep('preview')
       },
-      onError: (m) => { setStreamingText(''); setIsStreaming(false); setMessages((p) => [...p, { role: 'assistant', content: m }]) },
+      onError: (m) => { setStreamingText(''); setIsStreaming(false); setIsGenerating(false); setMessages((p) => [...p, { role: 'assistant', content: m }]) },
       onDone: () => {
         if (text) {
           const { clean, options } = extractOptions(text)
@@ -306,6 +345,7 @@ export default function App() {
     let guidelineReceived = false
     streamChat(newMessages, figmaContext, anthropicKey, {
       onText: (d) => { assistantText += d; setStreamingText(assistantText) },
+      onGenerating: () => { setStreamingText(''); setIsGenerating(true) },
       onGuideline: (data) => {
         guidelineReceived = true
         setGuideline(data as GuidelineData)
@@ -344,7 +384,20 @@ export default function App() {
       return
     }
     setBuildError('')
+    setIsBuilding(true)
     parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline } }, '*')
+
+    // Safety timeout — if no response from plugin in 30s, show error
+    if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
+    buildTimeoutRef.current = setTimeout(() => {
+      setIsBuilding((current) => {
+        if (current) {
+          setBuildError('Timeout: o plugin não respondeu. Verifique se a fonte Inter está instalada e tente novamente.')
+          return false
+        }
+        return current
+      })
+    }, 30000)
   }
 
   const handleExportDoc = () => {
@@ -374,6 +427,8 @@ export default function App() {
     setFigmaContext('')
     setAnalyzeError('')
     setBuildError('')
+    setIsBuilding(false)
+    if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
     setDocMarkdown('')
     setRefUrl('')
     setDestUrl('')
@@ -663,14 +718,7 @@ export default function App() {
                 <Bubble key={i} role={msg.role} content={msg.content} />
               ))}
               {streamingText && <Bubble role="assistant" content={streamingText} />}
-              {isGenerating && (
-                <div className="bubble-wrap assistant">
-                  <div className="bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div className="oauth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                    Montando seu guideline…
-                  </div>
-                </div>
-              )}
+              {isGenerating && <GeneratingIndicator />}
               {isStreaming && !streamingText && !isGenerating && <div className="bubble-wrap assistant"><div className="typing"><span /><span /><span /></div></div>}
               <div ref={messagesEndRef} />
             </div>
@@ -714,7 +762,7 @@ export default function App() {
 
       {/* ── Preview ── */}
       {step === 'preview' && guideline && (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <div className="preview-header">
             <span style={{ fontSize: 13, fontWeight: 600 }}>{guideline.title}</span>
             <span className="preview-count">{guideline.slides.length} slides</span>
@@ -738,16 +786,16 @@ export default function App() {
           </div>
           <div className="preview-actions">
             {buildError && <div className="error-card">{buildError}</div>}
-            <button className="btn btn-accent" onClick={() => {
+            <button className="btn btn-accent" disabled={isBuilding} onClick={() => {
               if (window.confirm(`Criar ${guideline?.slides.length} slides no arquivo Figma atual?`)) handleBuildFigma()
-            }}><Wand2 size={14} /> Criar slides no Figma</button>
+            }}>{isBuilding ? <><div className="oauth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Criando slides…</> : <><Wand2 size={14} /> Criar slides no Figma</>}</button>
             <div className="btn-row">
               <button className="btn btn-outline" onClick={handleExportDoc}><FileText size={14} /> Exportar doc</button>
               <button className="btn btn-outline" onClick={() => setStep('questions')}><Pencil size={14} /> Ajustar</button>
             </div>
             <button className="btn-ghost btn" onClick={handleReset}><RotateCcw size={12} /> Novo guideline</button>
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Concluído: Figma ── */}

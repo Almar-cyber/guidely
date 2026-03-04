@@ -1,5 +1,23 @@
 const BASE_URL = 'https://guidely-mu.vercel.app'
 
+// Lightweight validation without pulling in zod — keeps bundle small and sandbox-compatible
+function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: false; error: string } {
+  if (!data || typeof data !== 'object') return { ok: false, error: 'Não é um objeto' }
+  const d = data as Record<string, unknown>
+  if (typeof d.title !== 'string') return { ok: false, error: 'Campo "title" ausente ou inválido' }
+  if (typeof d.team !== 'string') return { ok: false, error: 'Campo "team" ausente ou inválido' }
+  if (typeof d.version !== 'string') return { ok: false, error: 'Campo "version" ausente ou inválido' }
+  if (!Array.isArray(d.slides) || d.slides.length === 0) return { ok: false, error: 'Campo "slides" ausente ou vazio' }
+  const validTypes = ['cover','objective','glossary','anatomy','use_case_map','use_case','behavior','do_dont','wording','contact']
+  for (let i = 0; i < d.slides.length; i++) {
+    const s = d.slides[i] as Record<string, unknown>
+    if (!s || typeof s.type !== 'string' || !validTypes.includes(s.type)) {
+      return { ok: false, error: `Slide ${i + 1}: tipo "${s?.type}" inválido` }
+    }
+  }
+  return { ok: true, data }
+}
+
 // ─── Figma OAuth ─────────────────────────────────────────────
 
 // ─── Anthropic OAuth ─────────────────────────────────────────
@@ -40,6 +58,7 @@ export interface Message {
 export interface StreamCallbacks {
   onText: (delta: string) => void
   onGuideline: (data: unknown) => void
+  onGenerating?: () => void
   onError: (msg: string) => void
   onDone: () => void
 }
@@ -120,6 +139,27 @@ export async function streamChat(
   let toolInputAccum = ''
   let inToolUse = false
   let hasReceivedData = false
+  let guidelineEmitted = false
+  let fullText = ''
+
+  // If Claude responded with text containing JSON instead of calling the tool, try to extract it
+  function tryFallbackAndDone() {
+    if (!guidelineEmitted && fullText.length > 200) {
+      const jsonMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (jsonMatch) {
+        try {
+          const raw = JSON.parse(jsonMatch[1])
+          const result = validateGuideline(raw)
+          if (result.ok) {
+            guidelineEmitted = true
+            cb.onGuideline(result.data)
+            return
+          }
+        } catch { /* not valid JSON — ignore */ }
+      }
+    }
+    cb.onDone()
+  }
 
   try {
     while (true) {
@@ -134,7 +174,7 @@ export async function streamChat(
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue
         const raw = line.slice(6).trim()
-        if (raw === '[DONE]') { cb.onDone(); return }
+        if (raw === '[DONE]') { tryFallbackAndDone(); return }
 
         // Fix #5 — log parse failures instead of silently dropping
         let event: Record<string, unknown>
@@ -151,22 +191,28 @@ export async function streamChat(
           if (block?.type === 'tool_use' && block?.name === 'generate_guideline') {
             inToolUse = true
             toolInputAccum = ''
+            cb.onGenerating?.()
           }
         }
 
         if (type === 'content_block_delta') {
           const delta = event.delta as Record<string, unknown>
-          if (delta?.type === 'text_delta') cb.onText(delta.text as string)
+          if (delta?.type === 'text_delta') { const t = delta.text as string; fullText += t; cb.onText(t) }
           if (delta?.type === 'input_json_delta') toolInputAccum += (delta.partial_json as string) ?? ''
         }
 
         if (type === 'content_block_stop' && inToolUse) {
           inToolUse = false
           try {
-            const parsed = JSON.parse(toolInputAccum)
-            cb.onGuideline(parsed)
+            const raw = JSON.parse(toolInputAccum)
+            const result = validateGuideline(raw)
+            if (result.ok) {
+              guidelineEmitted = true
+              cb.onGuideline(result.data)
+            } else {
+              cb.onError(`Guideline com campos inválidos: ${result.error}. Tente escrever "gerar" novamente.`)
+            }
           } catch (e) {
-            // Show actual error to help diagnose
             const errMsg = String(e).slice(0, 120)
             const jsonLen = toolInputAccum.length
             cb.onError(`Erro ao processar guideline (${errMsg}) — JSON length: ${jsonLen}. Tente escrever "gerar" novamente.`)
@@ -188,5 +234,5 @@ export async function streamChat(
     return
   }
 
-  cb.onDone()
+  tryFallbackAndDone()
 }

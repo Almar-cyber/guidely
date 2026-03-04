@@ -70,7 +70,7 @@ Respond in the same language the designer uses (Portuguese or Spanish). Keep ton
 
 const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
   name: 'generate_guideline',
-  description: 'Generate a complete guideline structure once enough information has been gathered.',
+  description: 'Generate a complete guideline structure once enough information has been gathered. IMPORTANT: You MUST call this tool to generate the guideline — do NOT return the JSON as text.',
   input_schema: {
     type: 'object',
     properties: {
@@ -79,18 +79,177 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
       version: { type: 'string', description: 'Version (e.g. V1 · 2026)' },
       slides: {
         type: 'array',
-        description: 'Complete ordered list of slides',
+        description: 'Complete ordered list of slides. Each slide must include ALL required fields for its type.',
         items: {
-          type: 'object',
-          description: 'A slide. Shape varies by type.',
-          properties: {
-            type: {
-              type: 'string',
-              enum: ['cover','objective','glossary','anatomy','use_case_map','use_case','behavior','do_dont','wording','contact'],
+          oneOf: [
+            {
+              type: 'object',
+              description: 'Cover slide',
+              properties: {
+                type: { type: 'string', const: 'cover' },
+                title: { type: 'string', description: 'Main title' },
+                subtitle: { type: 'string', description: 'One-line description' },
+                team: { type: 'string' },
+                version: { type: 'string' },
+              },
+              required: ['type', 'title', 'subtitle', 'team', 'version'],
             },
-          },
-          required: ['type'],
-          additionalProperties: true,
+            {
+              type: 'object',
+              description: 'Objective slide',
+              properties: {
+                type: { type: 'string', const: 'objective' },
+                body: { type: 'string', description: 'Full objective text' },
+              },
+              required: ['type', 'body'],
+            },
+            {
+              type: 'object',
+              description: 'Glossary slide',
+              properties: {
+                type: { type: 'string', const: 'glossary' },
+                terms: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { term: { type: 'string' }, definition: { type: 'string' } },
+                    required: ['term', 'definition'],
+                  },
+                },
+              },
+              required: ['type', 'terms'],
+            },
+            {
+              type: 'object',
+              description: 'Anatomy slide — numbered component list',
+              properties: {
+                type: { type: 'string', const: 'anatomy' },
+                title: { type: 'string' },
+                body: { type: 'string' },
+                components: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { index: { type: 'number' }, name: { type: 'string' }, required: { type: 'boolean' } },
+                    required: ['index', 'name', 'required'],
+                  },
+                },
+                note: { type: 'string' },
+                imageNote: { type: 'string', description: 'Instruction for which mockup screenshot to insert' },
+              },
+              required: ['type', 'title', 'components'],
+            },
+            {
+              type: 'object',
+              description: 'Use-case map — table of components × cases',
+              properties: {
+                type: { type: 'string', const: 'use_case_map' },
+                title: { type: 'string' },
+                caseNames: { type: 'array', items: { type: 'string' }, description: 'Column headers (case names)' },
+                rows: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      component: { type: 'string' },
+                      cases: { type: 'object', description: 'Map of caseName → boolean' },
+                    },
+                    required: ['component', 'cases'],
+                  },
+                },
+              },
+              required: ['type', 'title', 'caseNames', 'rows'],
+            },
+            {
+              type: 'object',
+              description: 'Individual use-case slide',
+              properties: {
+                type: { type: 'string', const: 'use_case' },
+                title: { type: 'string' },
+                countries: { type: 'array', items: { type: 'string' } },
+                body: { type: 'string' },
+                components: { type: 'array', items: { type: 'string' } },
+                imageNote: { type: 'string' },
+              },
+              required: ['type', 'title', 'body', 'components'],
+            },
+            {
+              type: 'object',
+              description: 'Behavior slide — state/condition table',
+              properties: {
+                type: { type: 'string', const: 'behavior' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+                rows: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { label: { type: 'string' }, value: { type: 'string' } },
+                    required: ['label', 'value'],
+                  },
+                },
+                imageNote: { type: 'string' },
+              },
+              required: ['type', 'title', 'rows'],
+            },
+            {
+              type: 'object',
+              description: 'Do/Don\'t slide',
+              properties: {
+                type: { type: 'string', const: 'do_dont' },
+                title: { type: 'string' },
+                do: { type: 'array', items: { type: 'string' }, description: 'List of recommended practices' },
+                dont: { type: 'array', items: { type: 'string' }, description: 'List of practices to avoid' },
+              },
+              required: ['type', 'title', 'do', 'dont'],
+            },
+            {
+              type: 'object',
+              description: 'Wording slide — error messages per country',
+              properties: {
+                type: { type: 'string', const: 'wording' },
+                title: { type: 'string' },
+                errors: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      objective: { type: 'string' },
+                      variants: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: { country: { type: 'string' }, flag: { type: 'string' }, text: { type: 'string' } },
+                          required: ['country', 'flag', 'text'],
+                        },
+                      },
+                      rationale: { type: 'string' },
+                    },
+                    required: ['name', 'objective', 'variants'],
+                  },
+                },
+              },
+              required: ['type', 'title', 'errors'],
+            },
+            {
+              type: 'object',
+              description: 'Contact slide',
+              properties: {
+                type: { type: 'string', const: 'contact' },
+                channel: { type: 'string', description: 'Slack channel name' },
+                links: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { label: { type: 'string' }, url: { type: 'string' } },
+                    required: ['label', 'url'],
+                  },
+                },
+              },
+              required: ['type', 'channel', 'links'],
+            },
+          ],
         },
       },
     },
@@ -110,9 +269,9 @@ export default async function handler(req: Request): Promise<Response> {
   const accessCode = process.env.ACCESS_CODE
   const backendKey = process.env.ANTHROPIC_API_KEY
 
-  // If user sent an OAuth token directly, use it; otherwise use backend key + validate access code
-  const isOAuthToken = userToken.startsWith('sk-ant-oat') || userToken.length > 100
-  const apiKey = isOAuthToken ? userToken : backendKey
+  // If user sent a valid Anthropic key directly, use it; otherwise use backend key + validate access code
+  const isUserKey = userToken.startsWith('sk-ant-') && userToken.length >= 40
+  const apiKey = isUserKey ? userToken : backendKey
 
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Backend não configurado. Fale com o admin.' }), {
@@ -121,7 +280,7 @@ export default async function handler(req: Request): Promise<Response> {
     })
   }
 
-  if (!isOAuthToken && accessCode && userToken !== accessCode) {
+  if (!isUserKey && accessCode && userToken !== accessCode) {
     return new Response(JSON.stringify({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
