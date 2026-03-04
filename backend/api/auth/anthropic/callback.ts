@@ -11,7 +11,7 @@ function getBase(req: Request): string {
 
 export default async function handler(req: Request): Promise<Response> {
   const BASE = getBase(req)
-  const redirect = (path: string) => Response.redirect(`${BASE}/auth-result.html${path}`)
+  const redirect = (path: string) => Response.redirect(`${BASE}/auth-result.html${path}`, 302)
 
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')

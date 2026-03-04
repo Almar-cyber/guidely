@@ -50,11 +50,12 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
   return /(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)
 }
 
-const MAX_CONTEXT_CHARS = 120000
+const MAX_CONTEXT_CHARS = 70000
 const MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION = 38000
 const MAX_MESSAGES = 16
 const MAX_MESSAGES_FOR_FORCED_GENERATION = 10
 const MAX_MESSAGE_TEXT_CHARS = 5000
+const STREAM_INIT_TIMEOUT_MS = 90000
 
 function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
@@ -469,9 +470,10 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401)
     }
 
-    const { messages, figmaContext = '' } = await req.json() as {
+    const { messages, figmaContext = '', requestId } = await req.json() as {
       messages: Anthropic.MessageParam[]
       figmaContext?: string
+      requestId?: string
     }
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -487,38 +489,60 @@ export default async function handler(req: Request): Promise<Response> {
       figmaContext,
       forceGuidelineTool ? MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION : MAX_CONTEXT_CHARS
     )
+    const traceId = typeof requestId === 'string' && requestId.trim()
+      ? requestId.trim()
+      : `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const client = new Anthropic({ apiKey })
-
-    let stream: Awaited<ReturnType<typeof client.messages.stream>>
-    try {
-      stream = await client.messages.stream({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 8096,
-        system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool),
-        tools: [GENERATE_GUIDELINE_TOOL],
-        tool_choice: forceGuidelineTool
-          ? { type: 'tool', name: 'generate_guideline' }
-          : { type: 'auto' },
-        messages: compactedMessages,
-      })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao iniciar stream com Claude.'
-      return jsonResponse({ error: message }, 502)
-    }
 
     const encoder = new TextEncoder()
 
     const readable = new ReadableStream({
       async start(controller) {
+        const emitJson = (payload: unknown) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+        }
+
+        let initTimeoutId: ReturnType<typeof setTimeout> | null = null
+
         try {
+          emitJson({ type: 'meta', requestId: traceId, stage: 'accepted' })
+
+          const initTimeoutPromise = new Promise<never>((_, reject) => {
+            initTimeoutId = setTimeout(() => {
+              reject(new Error(`Timeout ao iniciar stream (${Math.round(STREAM_INIT_TIMEOUT_MS / 1000)}s).`))
+            }, STREAM_INIT_TIMEOUT_MS)
+          })
+
+          const stream = await Promise.race([
+            client.messages.stream({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 8096,
+              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool),
+              tools: [GENERATE_GUIDELINE_TOOL],
+              tool_choice: forceGuidelineTool
+                ? { type: 'tool', name: 'generate_guideline' }
+                : { type: 'auto' },
+              messages: compactedMessages,
+            }),
+            initTimeoutPromise,
+          ]) as Awaited<ReturnType<typeof client.messages.stream>>
+
+          if (initTimeoutId) {
+            clearTimeout(initTimeoutId)
+            initTimeoutId = null
+          }
+
+          emitJson({ type: 'meta', requestId: traceId, stage: 'streaming' })
+
           for await (const event of stream) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+            emitJson(event)
           }
           controller.enqueue(encoder.encode('data: [DONE]\n\n'))
           controller.close()
         } catch (err) {
+          if (initTimeoutId) clearTimeout(initTimeoutId)
           const message = err instanceof Error ? err.message : 'Stream error'
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`))
+          emitJson({ error: { message }, requestId: traceId })
           controller.close()
         }
       },

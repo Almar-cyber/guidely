@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["ES2017"],
+    "lib": ["ES2017", "DOM"],
     "strict": true,
     "moduleResolution": "bundler",
     "module": "ESNext",
-    "typeRoots": ["./node_modules/@figma/plugin-typings"],
+    "types": ["@figma/plugin-typings"],
     "outDir": "dist",
     "skipLibCheck": true
   },

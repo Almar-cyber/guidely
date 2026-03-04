@@ -82,11 +82,13 @@ export interface GuidelineData {
 
 export type PluginToUI =
   | { type: 'STORED_CREDENTIALS'; figmaToken: string; anthropicKey: string }
-  | { type: 'BUILD_COMPLETE'; count: number }
-  | { type: 'BUILD_ERROR'; message: string }
+  | { type: 'BUILD_STARTED'; requestId: string; totalSlides: number }
+  | { type: 'BUILD_STAGE'; requestId: string; stage: string; progress?: number }
+  | { type: 'BUILD_COMPLETE'; count: number; requestId?: string }
+  | { type: 'BUILD_ERROR'; message: string; requestId?: string }
 
 export type UIToPlugin =
   | { type: 'GET_CREDENTIALS' }
   | { type: 'SAVE_CREDENTIALS'; figmaToken: string; anthropicKey: string }
-  | { type: 'BUILD_SLIDES'; data: GuidelineData }
+  | { type: 'BUILD_SLIDES'; data: GuidelineData; requestId?: string }
   | { type: 'CLOSE' }

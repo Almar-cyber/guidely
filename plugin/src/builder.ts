@@ -134,6 +134,32 @@ interface ResolvedFontSet {
   usingInterFallback: boolean
 }
 
+export interface BuildGuidelineOptions {
+  onProgress?: (stage: string, progress?: number) => void
+  shouldAbort?: () => boolean
+}
+
+const BUILD_ABORTED_MESSAGE = 'A criação dos slides foi interrompida por tempo limite.'
+
+function ensureBuildNotAborted(options: BuildGuidelineOptions | undefined) {
+  if (options?.shouldAbort?.()) {
+    throw new Error(BUILD_ABORTED_MESSAGE)
+  }
+}
+
+function reportProgress(
+  options: BuildGuidelineOptions | undefined,
+  stage: string,
+  progress?: number
+) {
+  if (!options?.onProgress) return
+  if (typeof progress === 'number') {
+    options.onProgress(stage, Math.min(1, Math.max(0, progress)))
+    return
+  }
+  options.onProgress(stage)
+}
+
 async function resolveFontSet(): Promise<ResolvedFontSet> {
   const availableFonts = (await figma.listAvailableFontsAsync()).map((font) => font.fontName)
   if (!availableFonts.length) {
@@ -253,13 +279,13 @@ function buildCoverSlide(slide: CoverSlide, index: number): FrameNode {
   content.appendChild(label)
 
   const title = makeText(slide.title, 120, FONTS.extraBold, COLORS.textLight)
-  title.lineHeight = { value: 1.1, unit: 'MULTIPLIER' }
+  title.lineHeight = { value: 110, unit: 'PERCENT' }
   title.textAlignHorizontal = 'CENTER'
   title.resize(SLIDE_WIDTH - PAD.slideH * 2, title.height)
   content.appendChild(title)
 
   const sub = makeText(slide.subtitle, 48, FONTS.regular, { r: 0.6, g: 0.6, b: 0.65 })
-  sub.lineHeight = { value: 1.4, unit: 'MULTIPLIER' }
+  sub.lineHeight = { value: 140, unit: 'PERCENT' }
   sub.textAlignHorizontal = 'CENTER'
   sub.resize(SLIDE_WIDTH - PAD.slideH * 2, sub.height)
   content.appendChild(sub)
@@ -308,7 +334,7 @@ function buildObjectiveSlide(
   content.appendChild(label)
 
   const body = makeText(slide.body, 36, FONTS.regular, COLORS.textPrimary)  // Increased from 20
-  body.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
+  body.lineHeight = { value: 160, unit: 'PERCENT' }
   body.layoutSizingHorizontal = 'FILL' as any
   content.appendChild(body)
 
@@ -383,7 +409,7 @@ function buildGlossarySlide(
     row.appendChild(termText)
 
     const defText = makeText(item.definition, 24, FONTS.regular, COLORS.textSecondary)  // Increased from 13
-    defText.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+    defText.lineHeight = { value: 150, unit: 'PERCENT' }
     defText.layoutGrow = 1
     row.appendChild(defText)
 
@@ -429,7 +455,7 @@ function buildAnatomySlide(
 
   if (slide.body) {
     const body = makeText(slide.body, 28, FONTS.regular, COLORS.textSecondary)  // Increased from 16
-    body.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+    body.lineHeight = { value: 150, unit: 'PERCENT' }
     body.layoutSizingHorizontal = 'FILL' as any
     content.appendChild(body)
   }
@@ -469,7 +495,7 @@ function buildAnatomySlide(
 
   if (slide.note) {
     const note = makeText(`⚠️  ${slide.note}`, 24, FONTS.regular, COLORS.textSecondary)  // Increased from 13
-    note.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+    note.lineHeight = { value: 150, unit: 'PERCENT' }
     content.appendChild(note)
   }
 
@@ -624,7 +650,7 @@ function buildUseCaseSlide(
   content.appendChild(makeDivider())
 
   const body = makeText(slide.body, 16, FONTS.regular, COLORS.textPrimary)
-  body.lineHeight = { value: 1.7, unit: 'MULTIPLIER' }
+  body.lineHeight = { value: 170, unit: 'PERCENT' }
   body.layoutSizingHorizontal = 'FILL' as any
   content.appendChild(body)
 
@@ -697,7 +723,7 @@ function buildBehaviorSlide(
 
   if (slide.description) {
     const desc = makeText(slide.description, 16, FONTS.regular, COLORS.textSecondary)
-    desc.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
+    desc.lineHeight = { value: 160, unit: 'PERCENT' }
     desc.layoutSizingHorizontal = 'FILL' as any
     content.appendChild(desc)
   }
@@ -762,7 +788,7 @@ function buildBehaviorSlide(
     valCell.fills = []
     valCell.layoutGrow = 1
     const vText = makeText(row.value, 14, FONTS.regular, COLORS.textSecondary)
-    vText.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+    vText.lineHeight = { value: 150, unit: 'PERCENT' }
     vText.textAutoResize = 'HEIGHT'
     valCell.appendChild(vText)
     tRow.appendChild(valCell)
@@ -855,7 +881,7 @@ function buildDoDontSlide(
       row.appendChild(dot)
 
       const text = makeText(item, 28, FONTS.regular, COLORS.textPrimary)  // Increased from 15
-      text.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+      text.lineHeight = { value: 150, unit: 'PERCENT' }
       text.layoutGrow = 1
       row.appendChild(text)
 
@@ -912,7 +938,7 @@ function buildWordingSlide(
     card.appendChild(errTitle)
 
     const obj = makeText(`Objetivo: ${error.objective}`, 13, FONTS.regular, COLORS.textSecondary)
-    obj.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+    obj.lineHeight = { value: 150, unit: 'PERCENT' }
     obj.layoutSizingHorizontal = 'FILL' as any
     card.appendChild(obj)
 
@@ -940,7 +966,7 @@ function buildWordingSlide(
 
     if (error.rationale) {
       const rat = makeText(`⚠️  ${error.rationale}`, 12, FONTS.regular, COLORS.textSecondary)
-      rat.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+      rat.lineHeight = { value: 150, unit: 'PERCENT' }
       rat.layoutSizingHorizontal = 'FILL' as any
       card.appendChild(rat)
     }
@@ -978,7 +1004,7 @@ function buildContactSlide(
   content.appendChild(accentLine)
 
   const title = makeText('Comentários, dúvidas\nou feedback?', 80, FONTS.extraBold, COLORS.textLight)  // Increased from 48
-  title.lineHeight = { value: 1.2, unit: 'MULTIPLIER' }
+  title.lineHeight = { value: 120, unit: 'PERCENT' }
   title.textAlignHorizontal = 'CENTER'
   title.resize(SLIDE_WIDTH - PAD.slideH * 2, title.height)
   content.appendChild(title)
@@ -1018,7 +1044,9 @@ function buildContactSlide(
 // Main entry
 // ─────────────────────────────────────────────
 
-export async function buildGuideline(data: GuidelineData): Promise<void> {
+export async function buildGuideline(data: GuidelineData, options?: BuildGuidelineOptions): Promise<void> {
+  ensureBuildNotAborted(options)
+  reportProgress(options, 'Preparando fontes', 0.04)
   const resolvedFonts = await resolveFontSet()
   FONTS.regular = resolvedFonts.regular
   FONTS.semiBold = resolvedFonts.semiBold
@@ -1032,8 +1060,15 @@ export async function buildGuideline(data: GuidelineData): Promise<void> {
     FONTS.extraBold,
   ])
 
-  const fontResults = await Promise.allSettled(
-    fontsToLoad.map((font) => loadFontWithTimeout(font))
+  reportProgress(options, 'Carregando fontes', 0.1)
+
+  const fontResults: Array<{ status: 'fulfilled' } | { status: 'rejected'; reason: unknown }> = await Promise.all(
+    fontsToLoad.map((font) =>
+      loadFontWithTimeout(font).then(
+        () => ({ status: 'fulfilled' as const }),
+        (reason) => ({ status: 'rejected' as const, reason })
+      )
+    )
   )
 
   const hasFontLoadFailure = fontResults.some((result) => result.status === 'rejected')
@@ -1054,56 +1089,82 @@ export async function buildGuideline(data: GuidelineData): Promise<void> {
     figma.notify(`⚠️ Fonte Inter indisponível. Usando ${resolvedFonts.primaryFamily}.`, { timeout: 3500 })
   }
 
+  ensureBuildNotAborted(options)
+
   const page = figma.currentPage
   let slideNum = 1
   const skipped: string[] = []
+  const totalSlides = data.slides.length || 1
 
-  data.slides.forEach((slide, i) => {
+  reportProgress(options, 'Montando slides', 0.16)
+
+  for (let i = 0; i < data.slides.length; i++) {
+    ensureBuildNotAborted(options)
+    const slide = data.slides[i]
     let frame: FrameNode
 
-    switch (slide.type) {
-      case 'cover':
-        frame = buildCoverSlide(slide, i)
-        break
-      case 'objective':
-        frame = buildObjectiveSlide(slide, data.title, i, slideNum++)
-        break
-      case 'glossary':
-        frame = buildGlossarySlide(slide, data.title, i, slideNum++)
-        break
-      case 'anatomy':
-        frame = buildAnatomySlide(slide, data.title, i, slideNum++)
-        break
-      case 'use_case_map':
-        frame = buildUseCaseMapSlide(slide, data.title, i, slideNum++)
-        break
-      case 'use_case':
-        frame = buildUseCaseSlide(slide, data.title, i, slideNum++)
-        break
-      case 'behavior':
-        frame = buildBehaviorSlide(slide, data.title, i, slideNum++)
-        break
-      case 'do_dont':
-        frame = buildDoDontSlide(slide, data.title, i, slideNum++)
-        break
-      case 'wording':
-        frame = buildWordingSlide(slide, data.title, i, slideNum++)
-        break
-      case 'contact':
-        frame = buildContactSlide(slide, data.title, i, slideNum++)
-        break
-      default:
-        skipped.push(`Slide ${i + 1}: tipo "${(slide as { type: string }).type}"`)
-        return
+    reportProgress(
+      options,
+      `Criando slide ${i + 1}/${totalSlides}`,
+      0.16 + ((i + 1) / totalSlides) * 0.78
+    )
+
+    try {
+      switch (slide.type) {
+        case 'cover':
+          frame = buildCoverSlide(slide, i)
+          break
+        case 'objective':
+          frame = buildObjectiveSlide(slide, data.title, i, slideNum++)
+          break
+        case 'glossary':
+          frame = buildGlossarySlide(slide, data.title, i, slideNum++)
+          break
+        case 'anatomy':
+          frame = buildAnatomySlide(slide, data.title, i, slideNum++)
+          break
+        case 'use_case_map':
+          frame = buildUseCaseMapSlide(slide, data.title, i, slideNum++)
+          break
+        case 'use_case':
+          frame = buildUseCaseSlide(slide, data.title, i, slideNum++)
+          break
+        case 'behavior':
+          frame = buildBehaviorSlide(slide, data.title, i, slideNum++)
+          break
+        case 'do_dont':
+          frame = buildDoDontSlide(slide, data.title, i, slideNum++)
+          break
+        case 'wording':
+          frame = buildWordingSlide(slide, data.title, i, slideNum++)
+          break
+        case 'contact':
+          frame = buildContactSlide(slide, data.title, i, slideNum++)
+          break
+        default:
+          skipped.push(`Slide ${i + 1}: tipo "${(slide as { type: string }).type}"`)
+          continue
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message === BUILD_ABORTED_MESSAGE) {
+        throw err
+      }
+      const reason = err instanceof Error ? err.message : String(err)
+      throw new Error(`Falha no slide ${i + 1} (${slide.type}): ${reason}`)
     }
 
+    ensureBuildNotAborted(options)
     page.appendChild(frame)
-  })
+  }
 
   if (skipped.length) {
     figma.notify(`⚠️ ${skipped.length} slide(s) ignorado(s): tipo desconhecido`, { timeout: 5000 })
   }
 
+  reportProgress(options, 'Ajustando viewport', 0.98)
+  ensureBuildNotAborted(options)
+
   // Zoom to fit all slides
   figma.viewport.scrollAndZoomIntoView(page.children)
+  reportProgress(options, 'Slides criados', 1)
 }

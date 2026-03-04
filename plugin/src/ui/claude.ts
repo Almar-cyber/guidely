@@ -1,8 +1,10 @@
 const BASE_URL = 'https://guidely-mu.vercel.app'
 const STREAM_TOTAL_TIMEOUT_MS = 300000
 const STREAM_IDLE_TIMEOUT_MS = 120000
+const STREAM_FIRST_BYTE_TIMEOUT_MS = 45000
 const STREAM_MAX_TOTAL_TIMEOUT_MS = 1800000
 const STREAM_MAX_IDLE_TIMEOUT_MS = 420000
+const STREAM_MAX_FIRST_BYTE_TIMEOUT_MS = 120000
 const STREAM_TIMEOUT_RETRY_LIMIT = 2
 const RETRY_CONTEXT_LIMITS = [50000, 32000, 18000]
 
@@ -193,6 +195,10 @@ export interface StreamCallbacks {
   onDone: () => void
 }
 
+export interface StreamChatOptions {
+  requestId?: string
+}
+
 function authHeaders(anthropicKey: string): Record<string, string> {
   return {
     'Content-Type': 'application/json',
@@ -249,9 +255,18 @@ function compactContextForRetry(context: string, maxChars: number): string {
   return `${context.slice(0, headSize)}\n\n[Nota do sistema: contexto resumido automaticamente para garantir a conclusão da geração em documentação extensa.]\n\n${context.slice(-tailSize)}`
 }
 
-function computeStreamTimeouts(figmaContext: string, messages: Message[]): { idleMs: number; totalMs: number } {
+function computeStreamTimeouts(
+  figmaContext: string,
+  messages: Message[]
+): { firstByteMs: number; idleMs: number; totalMs: number } {
   const contextFactor = Math.ceil(figmaContext.length / 12000)
   const messageChars = estimateMessageChars(messages)
+
+  const firstByteMs = clamp(
+    STREAM_FIRST_BYTE_TIMEOUT_MS + contextFactor * 5000 + Math.floor(messageChars / 320),
+    STREAM_FIRST_BYTE_TIMEOUT_MS,
+    STREAM_MAX_FIRST_BYTE_TIMEOUT_MS
+  )
 
   const idleMs = clamp(
     STREAM_IDLE_TIMEOUT_MS + contextFactor * 20000 + Math.floor(messageChars / 180),
@@ -265,7 +280,7 @@ function computeStreamTimeouts(figmaContext: string, messages: Message[]): { idl
     STREAM_MAX_TOTAL_TIMEOUT_MS
   )
 
-  return { idleMs, totalMs }
+  return { firstByteMs, idleMs, totalMs }
 }
 
 // Stream chat — fix #1 (null body) + #5 (silent JSON) + specific error messages
@@ -274,17 +289,20 @@ export async function streamChat(
   figmaContext: string,
   anthropicKey: string,
   cb: StreamCallbacks,
+  options: StreamChatOptions = {},
   attempt = 0
 ): Promise<void> {
   const contextLimit = RETRY_CONTEXT_LIMITS[Math.min(attempt, RETRY_CONTEXT_LIMITS.length - 1)]
   const effectiveContext = compactContextForRetry(figmaContext, contextLimit)
-  const { idleMs, totalMs } = computeStreamTimeouts(effectiveContext, messages)
+  const { firstByteMs, idleMs, totalMs } = computeStreamTimeouts(effectiveContext, messages)
   const controller = new AbortController()
-  let abortReason: 'idle' | 'total' | null = null
+  let abortReason: 'first_byte' | 'idle' | 'total' | null = null
+  let firstByteTimeout: ReturnType<typeof setTimeout> | null = null
   let totalTimeout: ReturnType<typeof setTimeout> | null = null
   let idleTimeout: ReturnType<typeof setTimeout> | null = null
 
   const clearWatchdogs = () => {
+    if (firstByteTimeout) clearTimeout(firstByteTimeout)
     if (totalTimeout) clearTimeout(totalTimeout)
     if (idleTimeout) clearTimeout(idleTimeout)
   }
@@ -302,12 +320,17 @@ export async function streamChat(
     controller.abort()
   }, totalMs)
 
+  firstByteTimeout = setTimeout(() => {
+    abortReason = 'first_byte'
+    controller.abort()
+  }, firstByteMs)
+
   let res: Response
   try {
     res = await fetch(`${BASE_URL}/api/chat`, {
       method: 'POST',
       headers: authHeaders(anthropicKey),
-      body: JSON.stringify({ messages, figmaContext: effectiveContext }),
+      body: JSON.stringify({ messages, figmaContext: effectiveContext, requestId: options.requestId }),
       signal: controller.signal,
     })
   } catch {
@@ -315,11 +338,15 @@ export async function streamChat(
     if (controller.signal.aborted) {
       const canRetry = attempt < STREAM_TIMEOUT_RETRY_LIMIT
       if (canRetry) {
-        await streamChat(messages, figmaContext, anthropicKey, cb, attempt + 1)
+        await streamChat(messages, figmaContext, anthropicKey, cb, options, attempt + 1)
         return
       }
 
       const attemptInfo = attempt > 0 ? ` após ${attempt + 1} tentativas automáticas` : ''
+      if (abortReason === 'first_byte') {
+        cb.onError(`A resposta não começou em ${Math.round(firstByteMs / 1000)}s${attemptInfo}. Tente gerar novamente.`)
+        return
+      }
       if (abortReason === 'total') {
         cb.onError(`Tempo limite da geração (${Math.round(totalMs / 1000)}s)${attemptInfo}. Clique em gerar novamente para continuar.`)
         return
@@ -437,6 +464,10 @@ export async function streamChat(
       if (done) break
 
       hasReceivedData = true
+      if (firstByteTimeout) {
+        clearTimeout(firstByteTimeout)
+        firstByteTimeout = null
+      }
       refreshIdleWatchdog()
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\n')
@@ -520,11 +551,15 @@ export async function streamChat(
     if (controller.signal.aborted) {
       const canRetry = attempt < STREAM_TIMEOUT_RETRY_LIMIT && !guidelineEmitted
       if (canRetry) {
-        await streamChat(messages, figmaContext, anthropicKey, cb, attempt + 1)
+        await streamChat(messages, figmaContext, anthropicKey, cb, options, attempt + 1)
         return
       }
 
       const attemptInfo = attempt > 0 ? ` após ${attempt + 1} tentativas automáticas` : ''
+      if (abortReason === 'first_byte') {
+        cb.onError(`A resposta não começou em ${Math.round(firstByteMs / 1000)}s${attemptInfo}. Tente gerar novamente.`)
+        return
+      }
       if (abortReason === 'idle') {
         cb.onError(`A geração ficou sem atividade por ${Math.round(idleMs / 1000)}s${attemptInfo}. Clique em gerar novamente para continuar.`)
         return

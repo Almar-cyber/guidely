@@ -103,6 +103,14 @@ function slideImageNote(s: Slide): string | undefined {
   return 'imageNote' in s ? (s as { imageNote?: string }).imageNote : undefined
 }
 
+function createBuildRequestId(): string {
+  return `ui-build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function createChatRequestId(): string {
+  return `ui-chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 export default function App() {
   const [step, setStep] = useState<Step>('onboarding')
 
@@ -154,22 +162,29 @@ export default function App() {
   const [chatInput, setChatInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationStage, setGenerationStage] = useState('')
   const [quickOptions, setQuickOptions] = useState<string[]>([])
 
   const [guideline, setGuideline] = useState<GuidelineData | null>(null)
   const [buildError, setBuildError] = useState('')
   const [isBuilding, setIsBuilding] = useState(false)
+  const [buildStage, setBuildStage] = useState('')
+  const [buildProgress, setBuildProgress] = useState<number | null>(null)
   const [docMarkdown, setDocMarkdown] = useState('')
   const [docCopied, setDocCopied] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const buildTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const buildRequestIdRef = useRef<string | null>(null)
+  const buildStageRef = useRef('')
+  const analyzeStageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Cleanup polling/timeouts on unmount
   useEffect(() => () => {
     if (pollRef.current) clearInterval(pollRef.current)
     if (anthropicPollRef.current) clearInterval(anthropicPollRef.current)
     if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
+    if (analyzeStageTimeoutRef.current) clearTimeout(analyzeStageTimeoutRef.current)
   }, [])
 
   useEffect(() => {
@@ -191,14 +206,46 @@ export default function App() {
         if (msg.figmaToken && msg.anthropicKey) setStep('files')
         else if (msg.figmaToken || msg.anthropicKey) setStep('connect')
       }
+      if (msg.type === 'BUILD_STARTED') {
+        const activeRequestId = buildRequestIdRef.current
+        if (!activeRequestId || msg.requestId !== activeRequestId) return
+
+        buildRequestIdRef.current = msg.requestId
+        setIsBuilding(true)
+        setBuildStage(`Plugin confirmou a criação de ${msg.totalSlides} slide(s).`)
+        setBuildProgress(0.03)
+      }
+      if (msg.type === 'BUILD_STAGE') {
+        const activeRequestId = buildRequestIdRef.current
+        if (!activeRequestId || msg.requestId !== activeRequestId) return
+
+        setBuildStage(msg.stage)
+        if (typeof msg.progress === 'number') {
+          setBuildProgress(Math.min(1, Math.max(0, msg.progress)))
+        }
+      }
       if (msg.type === 'BUILD_COMPLETE') {
+        const activeRequestId = buildRequestIdRef.current
+        if (!activeRequestId) return
+        if (msg.requestId && msg.requestId !== activeRequestId) return
+
+        buildRequestIdRef.current = null
         if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
         setIsBuilding(false)
+        setBuildStage('')
+        setBuildProgress(null)
         setStep('output-figma')
       }
       if (msg.type === 'BUILD_ERROR') {
+        const activeRequestId = buildRequestIdRef.current
+        if (!activeRequestId) return
+        if (msg.requestId && msg.requestId !== activeRequestId) return
+
+        buildRequestIdRef.current = null
         if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
         setIsBuilding(false)
+        setBuildStage('')
+        setBuildProgress(null)
         setBuildError(msg.message)
         setStep('preview')
       }
@@ -213,6 +260,10 @@ export default function App() {
     })
     return () => cancelAnimationFrame(id)
   }, [messages, streamingText])
+
+  useEffect(() => {
+    buildStageRef.current = buildStage
+  }, [buildStage])
 
   const handleConnectAnthropic = async () => {
     setAnthropicOAuthStatus('waiting')
@@ -287,6 +338,7 @@ export default function App() {
   const handleAnalyze = async () => {
     const refId = extractFileId(refUrl) ?? undefined
     const destId = extractFileId(destUrl) ?? undefined
+    const hasDistinctDestination = Boolean(destId && destId !== refId)
     if (refUrl.trim() && !refId) { setAnalyzeError('URL de referência inválida.'); return }
     if (destUrl.trim() && !destId) { setAnalyzeError('URL de destino inválida.'); return }
     if (!refId && !destId) { setAnalyzeError('Cole ao menos uma URL do Figma.'); return }
@@ -295,13 +347,29 @@ export default function App() {
     setStep('analyzing')
     try {
       setAnalyzeStatus('reading-ref')
+      if (analyzeStageTimeoutRef.current) clearTimeout(analyzeStageTimeoutRef.current)
+      if (hasDistinctDestination) {
+        analyzeStageTimeoutRef.current = setTimeout(() => {
+          setAnalyzeStatus((current) => current === 'reading-ref' ? 'reading-dest' : current)
+        }, 700)
+      }
+
       const context = await readFigmaFiles(figmaToken, anthropicKey, refId ?? destId!, destId && destId !== refId ? destId : undefined)
+
+      if (analyzeStageTimeoutRef.current) {
+        clearTimeout(analyzeStageTimeoutRef.current)
+        analyzeStageTimeoutRef.current = null
+      }
       setAnalyzeStatus('done')
       setFigmaContext(context)
       await new Promise((r) => setTimeout(r, 300))
       setStep('questions')
       startConversation(context)
     } catch (err) {
+      if (analyzeStageTimeoutRef.current) {
+        clearTimeout(analyzeStageTimeoutRef.current)
+        analyzeStageTimeoutRef.current = null
+      }
       const msg = err instanceof Error ? err.message : 'Erro desconhecido'
       setAnalyzeError(
         msg === 'Failed to fetch'
@@ -317,20 +385,33 @@ export default function App() {
     setMessages([init])
     setIsStreaming(true)
     setIsGenerating(false)
+    setGenerationStage('Aguardando resposta do Claude…')
     setStreamingText('')
     let text = ''
+    const requestId = createChatRequestId()
     streamChat([init], context, anthropicKey, {
       onText: (d) => { text += d; setStreamingText(text) },
-      onGenerating: () => { setStreamingText(''); setIsGenerating(true) },
+      onGenerating: () => {
+        setStreamingText('')
+        setIsGenerating(true)
+        setGenerationStage('Montando guideline…')
+      },
       onGuideline: (data) => {
         setGuideline(data as GuidelineData)
         setStreamingText('')
         setIsStreaming(false)
         setIsGenerating(false)
+        setGenerationStage('')
         setMessages((p) => [...p, { role: 'assistant', content: 'Guideline pronto.' }])
         setStep('preview')
       },
-      onError: (m) => { setStreamingText(''); setIsStreaming(false); setIsGenerating(false); setMessages((p) => [...p, { role: 'assistant', content: m }]) },
+      onError: (m) => {
+        setStreamingText('')
+        setIsStreaming(false)
+        setIsGenerating(false)
+        setGenerationStage('')
+        setMessages((p) => [...p, { role: 'assistant', content: m }])
+      },
       onDone: () => {
         if (text) {
           const { clean, options } = extractOptions(text)
@@ -340,8 +421,9 @@ export default function App() {
         }
         setIsStreaming(false)
         setIsGenerating(false)
+        setGenerationStage('')
       },
-    })
+    }, { requestId })
   }, [anthropicKey])
 
   const sendMessage = useCallback((text: string) => {
@@ -353,30 +435,46 @@ export default function App() {
     setQuickOptions([])
     setIsStreaming(true)
     setIsGenerating(false)
+    setGenerationStage('Aguardando resposta do Claude…')
     setStreamingText('')
     let assistantText = ''
     let guidelineReceived = false
+    const requestId = createChatRequestId()
     streamChat(newMessages, figmaContext, anthropicKey, {
       onText: (d) => { assistantText += d; setStreamingText(assistantText) },
-      onGenerating: () => { setStreamingText(''); setIsGenerating(true) },
+      onGenerating: () => {
+        setStreamingText('')
+        setIsGenerating(true)
+        setGenerationStage('Montando guideline…')
+      },
       onGuideline: (data) => {
         guidelineReceived = true
-        setGuideline(data as GuidelineData)
+        const d = data as GuidelineData
+        setGuideline(d)
         setStreamingText('')
         setIsStreaming(false)
         setIsGenerating(false)
-        setStep('preview')
+        setGenerationStage('')
+        // Debug: show slide count before transitioning
+        setMessages((p) => [...p, {
+          role: 'assistant',
+          content: `✅ ${d.slides?.length ?? 0} slides gerados — abrindo preview…`
+        }])
+        // Small delay to ensure the message renders before step change
+        setTimeout(() => setStep('preview'), 100)
       },
       onError: (m) => {
         setStreamingText('')
         setIsStreaming(false)
         setIsGenerating(false)
-        setMessages((p) => [...p, { role: 'assistant', content: m }])
+        setGenerationStage('')
+        setMessages((p) => [...p, { role: 'assistant', content: `❌ Erro: ${m}` }])
       },
       onDone: () => {
         if (guidelineReceived) {
           setIsStreaming(false)
           setIsGenerating(false)
+          setGenerationStage('')
           return
         }
         if (assistantText) {
@@ -384,11 +482,15 @@ export default function App() {
           setMessages((p) => [...p, { role: 'assistant', content: clean }])
           setQuickOptions(options)
           setStreamingText('')
+        } else {
+          // No text and no guideline — something went wrong
+          setMessages((p) => [...p, { role: 'assistant', content: '⚠️ Resposta vazia. Tente escrever "gerar" novamente.' }])
         }
         setIsStreaming(false)
         setIsGenerating(false)
+        setGenerationStage('')
       },
-    })
+    }, { requestId })
   }, [messages, isStreaming, figmaContext, anthropicKey])
 
   const handleBuildFigma = () => {
@@ -396,19 +498,28 @@ export default function App() {
       setBuildError('Nenhum slide para criar. Tente gerar novamente.')
       return
     }
+    const requestId = createBuildRequestId()
     const slideCount = guideline.slides.length
-    const timeoutMs = Math.min(480000, Math.max(90000, slideCount * 8000))
+    const timeoutMs = Math.min(720000, Math.max(120000, slideCount * 10000))
 
+    buildRequestIdRef.current = requestId
     setBuildError('')
     setIsBuilding(true)
-    parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline } }, '*')
+    setBuildStage('Enviando guideline para o plugin…')
+    setBuildProgress(0.01)
+    parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline, requestId } }, '*')
 
     // Safety timeout — adaptive to slide count to reduce false timeouts on larger guidelines
     if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
     buildTimeoutRef.current = setTimeout(() => {
       setIsBuilding((current) => {
         if (current) {
-          setBuildError(`A criação demorou mais que ${Math.round(timeoutMs / 1000)}s e ainda não houve confirmação do plugin. Aguarde alguns segundos: se nada aparecer no canvas, tente criar novamente.`)
+          const currentStage = buildStageRef.current
+          const stageInfo = currentStage ? ` Última etapa: ${currentStage}.` : ''
+          setBuildError(`A criação excedeu ${Math.round(timeoutMs / 1000)}s sem finalização.${stageInfo} Tente criar novamente.`)
+          buildRequestIdRef.current = null
+          setBuildStage('')
+          setBuildProgress(null)
           return false
         }
         return current
@@ -437,15 +548,23 @@ export default function App() {
   const handleReset = () => {
     setStep('files')
     setMessages([])
+    setQuickOptions([])
     setGuideline(null)
     setIsStreaming(false)
     setIsGenerating(false)
+    setGenerationStage('')
     setStreamingText('')
     setChatInput('')
     setFigmaContext('')
     setAnalyzeError('')
+    setAnalyzeStatus('reading-ref')
     setBuildError('')
     setIsBuilding(false)
+    setBuildStage('')
+    buildStageRef.current = ''
+    setBuildProgress(null)
+    buildRequestIdRef.current = null
+    if (analyzeStageTimeoutRef.current) clearTimeout(analyzeStageTimeoutRef.current)
     if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
     setDocMarkdown('')
     setRefUrl('')
@@ -455,6 +574,9 @@ export default function App() {
   const figmaConnected = oauthStatus === 'done' || figmaToken.trim().length > 0
   const anthropicConnected = anthropicOAuthStatus === 'done' && anthropicKey.length > 20
   const credentialsValid = figmaConnected && anthropicConnected
+  const inputRefFileId = extractFileId(refUrl)
+  const inputDestFileId = extractFileId(destUrl)
+  const hasDistinctDestinationInput = Boolean(inputDestFileId && inputDestFileId !== inputRefFileId)
 
   return (
     <>
@@ -709,7 +831,7 @@ export default function App() {
                 { id: 'reading-dest', label: 'Arquivo de destino' },
                 { id: 'done', label: 'Iniciando conversa' },
               ] as const)
-                .filter((s) => s.id !== 'reading-dest' || destUrl)
+                .filter((s) => s.id !== 'reading-dest' || hasDistinctDestinationInput)
                 .map((s) => {
                   const order = ['reading-ref', 'reading-dest', 'done']
                   const cur = order.indexOf(analyzeStatus)
@@ -731,6 +853,11 @@ export default function App() {
       {step === 'questions' && (
         <div className="chat-layout">
           <div className="scroll">
+            {isStreaming && generationStage && (
+              <div style={{ padding: '8px 12px 0', fontSize: 11, color: 'var(--color-text-3)' }}>
+                {generationStage}
+              </div>
+            )}
             <div className="messages">
               {messages.map((msg, i) => (
                 <Bubble key={i} role={msg.role} content={msg.content} />
@@ -804,6 +931,27 @@ export default function App() {
           </div>
           <div className="preview-actions">
             {buildError && <div className="error-card">{buildError}</div>}
+            {isBuilding && buildStage && (
+              <div className="info-card" style={{ marginBottom: 8 }}>
+                <span className="info-icon"><Layers size={15} /></span>
+                <div className="info-body">
+                  <div className="info-title">Criando no Figma…</div>
+                  <div className="info-text">{buildStage}</div>
+                  {typeof buildProgress === 'number' && (
+                    <div style={{ marginTop: 6, height: 4, borderRadius: 999, background: 'var(--ax-dark-100)', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${Math.round(buildProgress * 100)}%`,
+                          height: '100%',
+                          background: 'var(--color-primary)',
+                          transition: 'width 220ms ease',
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <button className="btn btn-accent" disabled={isBuilding} onClick={() => {
               if (window.confirm(`Criar ${guideline?.slides.length} slides no arquivo Figma atual?`)) handleBuildFigma()
             }}>{isBuilding ? <><div className="oauth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Criando slides…</> : <><Wand2 size={14} /> Criar slides no Figma</>}</button>

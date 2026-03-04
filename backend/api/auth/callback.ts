@@ -17,7 +17,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // User denied or error
   if (error || !code || !state) {
-    return Response.redirect(`${redirectBase}/auth-result.html?error=${error ?? 'missing_params'}`)
+    return Response.redirect(`${redirectBase}/auth-result.html?error=${error ?? 'missing_params'}`, 302)
   }
 
   const clientId = process.env.FIGMA_CLIENT_ID!
@@ -41,7 +41,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (!tokenRes.ok) {
       const err = await tokenRes.text()
       console.error('Figma token exchange failed:', err)
-      return Response.redirect(`${redirectBase}/auth-result.html?error=token_exchange_failed`)
+      return Response.redirect(`${redirectBase}/auth-result.html?error=token_exchange_failed`, 302)
     }
 
     const { access_token } = await tokenRes.json() as { access_token: string }
@@ -54,9 +54,9 @@ export default async function handler(req: Request): Promise<Response> {
     await redis.setex(`figma_auth:${state}`, TOKEN_TTL, access_token)
 
     // Redirect to success page — user can close the tab
-    return Response.redirect(`${redirectBase}/auth-result.html?success=true`)
+    return Response.redirect(`${redirectBase}/auth-result.html?success=true`, 302)
   } catch (err) {
     console.error('Auth callback error:', err)
-    return Response.redirect(`${redirectBase}/auth-result.html?error=server_error`)
+    return Response.redirect(`${redirectBase}/auth-result.html?error=server_error`, 302)
   }
 }
