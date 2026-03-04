@@ -18,8 +18,6 @@ import {
   SLIDE_GAP,
   COLORS,
   FONTS,
-  REQUIRED_FONTS,
-  OPTIONAL_FONTS,
   PAD,
 } from './templates'
 
@@ -66,6 +64,109 @@ function setAutoLayout(
   frame.counterAxisSizingMode = 'AUTO'
 }
 
+type FontRole = keyof typeof FONTS
+
+const FONT_STYLE_CANDIDATES: Record<FontRole, string[]> = {
+  regular: ['Regular', 'Book', 'Roman', 'Normal', 'Medium'],
+  semiBold: ['Semi Bold', 'SemiBold', 'Demi Bold', 'DemiBold', 'Medium', 'Bold'],
+  bold: ['Bold', 'Semi Bold', 'SemiBold'],
+  extraBold: ['Extra Bold', 'ExtraBold', 'Black', 'Heavy', 'Bold'],
+}
+
+const FONT_FAMILY_PREFERENCE = ['Inter', 'Roboto', 'Arial', 'Helvetica Neue']
+
+function normalizeFontToken(value: string): string {
+  return value.toLowerCase().replace(/[\s_-]+/g, '')
+}
+
+function pickFont(
+  availableFonts: FontName[],
+  families: string[],
+  styleCandidates: string[]
+): FontName | null {
+  const styleSet = new Set(styleCandidates.map((style) => normalizeFontToken(style)))
+
+  for (const family of families) {
+    const familyToken = normalizeFontToken(family)
+    const match = availableFonts.find(
+      (font) =>
+        normalizeFontToken(font.family) === familyToken
+        && styleSet.has(normalizeFontToken(font.style))
+    )
+    if (match) return match
+  }
+
+  return availableFonts.find((font) => styleSet.has(normalizeFontToken(font.style))) ?? null
+}
+
+function uniqueFonts(fonts: FontName[]): FontName[] {
+  const seen = new Set<string>()
+  return fonts.filter((font) => {
+    const key = `${font.family}::${font.style}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+async function loadFontWithTimeout(font: FontName, timeoutMs = 8000): Promise<void> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Timeout ao carregar fonte ${font.family} ${font.style}`))
+    }, timeoutMs)
+  })
+
+  try {
+    await Promise.race([figma.loadFontAsync(font), timeoutPromise])
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
+}
+
+interface ResolvedFontSet {
+  regular: FontName
+  semiBold: FontName
+  bold: FontName
+  extraBold: FontName
+  primaryFamily: string
+  usingInterFallback: boolean
+}
+
+async function resolveFontSet(): Promise<ResolvedFontSet> {
+  const availableFonts = (await figma.listAvailableFontsAsync()).map((font) => font.fontName)
+  if (!availableFonts.length) {
+    throw new Error('Nenhuma fonte disponível no Figma para criar os slides.')
+  }
+
+  const hasInter = availableFonts.some((font) => normalizeFontToken(font.family) === 'inter')
+  const preferredFamilies = hasInter
+    ? FONT_FAMILY_PREFERENCE
+    : FONT_FAMILY_PREFERENCE.filter((family) => normalizeFontToken(family) !== 'inter')
+
+  const regular = pickFont(availableFonts, preferredFamilies, FONT_STYLE_CANDIDATES.regular) ?? availableFonts[0]
+  const familyPriority = [
+    regular.family,
+    ...preferredFamilies.filter(
+      (family) => normalizeFontToken(family) !== normalizeFontToken(regular.family)
+    ),
+  ]
+
+  const semiBold = pickFont(availableFonts, familyPriority, FONT_STYLE_CANDIDATES.semiBold) ?? regular
+  const bold = pickFont(availableFonts, familyPriority, FONT_STYLE_CANDIDATES.bold) ?? semiBold
+  const extraBold = pickFont(availableFonts, familyPriority, FONT_STYLE_CANDIDATES.extraBold) ?? bold
+
+  return {
+    regular,
+    semiBold,
+    bold,
+    extraBold,
+    primaryFamily: regular.family,
+    usingInterFallback: normalizeFontToken(regular.family) !== 'inter',
+  }
+}
+
 // ─────────────────────────────────────────────
 // Shared slide components
 // ─────────────────────────────────────────────
@@ -85,16 +186,16 @@ function makeHeaderBar(guidelineTitle: string, slideNum?: number): FrameNode {
 
   const label = makeText(
     `GUIDELINE - ${guidelineTitle.toUpperCase()}`,
-    12,
+    18,  // Increased from 12
     FONTS.semiBold,
     { r: 0.6, g: 0.6, b: 0.65 }
   )
-  label.letterSpacing = { value: 1.5, unit: 'PIXELS' }
+  label.letterSpacing = { value: 2, unit: 'PIXELS' }
   label.layoutGrow = 1
   bar.appendChild(label)
 
   if (slideNum !== undefined) {
-    const num = makeText(String(slideNum), 14, FONTS.bold, { r: 0.6, g: 0.6, b: 0.65 })
+    const num = makeText(String(slideNum), 20, FONTS.bold, { r: 0.6, g: 0.6, b: 0.65 })  // Increased from 14
     bar.appendChild(num)
   }
 
@@ -111,11 +212,11 @@ function makeDivider(): FrameNode {
 
 function makeTag(text: string): FrameNode {
   const tag = makeFrame('Tag')
-  setAutoLayout(tag, 'HORIZONTAL', 0, 6, 6, 12, 12)
+  setAutoLayout(tag, 'HORIZONTAL', 0, 8, 8, 16, 16)  // Increased padding
   tag.cornerRadius = 100
   tag.fills = solid(COLORS.tagBg)
 
-  const label = makeText(text, 11, FONTS.semiBold, COLORS.tagText)
+  const label = makeText(text, 24, FONTS.semiBold, COLORS.tagText)  // Increased from 11
   tag.appendChild(label)
   return tag
 }
@@ -138,39 +239,44 @@ function buildCoverSlide(slide: CoverSlide, index: number): FrameNode {
   accentLine.y = PAD.slideTop
   frame.appendChild(accentLine)
 
-  // Content frame (centered vertically)
+  // Content frame (centered vertically and horizontally)
   const content = makeFrame('Content')
-  setAutoLayout(content, 'VERTICAL', 20, 0, 0, PAD.slideH, PAD.slideH)
+  setAutoLayout(content, 'VERTICAL', 32, 0, 0, PAD.slideH, PAD.slideH)
   content.fills = []
   content.resize(SLIDE_WIDTH, 1)
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
+  content.counterAxisAlignItems = 'CENTER' // Center horizontally
 
-  const label = makeText('GUIDELINE', 13, FONTS.semiBold, COLORS.mpGreen)
-  label.letterSpacing = { value: 3, unit: 'PIXELS' }
+  const label = makeText('GUIDELINE', 20, FONTS.semiBold, COLORS.mpGreen)
+  label.letterSpacing = { value: 4, unit: 'PIXELS' }
   content.appendChild(label)
 
-  const title = makeText(slide.title, 72, FONTS.extraBold, COLORS.textLight)
+  const title = makeText(slide.title, 120, FONTS.extraBold, COLORS.textLight)
   title.lineHeight = { value: 1.1, unit: 'MULTIPLIER' }
+  title.textAlignHorizontal = 'CENTER'
+  title.resize(SLIDE_WIDTH - PAD.slideH * 2, title.height)
   content.appendChild(title)
 
-  const sub = makeText(slide.subtitle, 24, FONTS.regular, { r: 0.6, g: 0.6, b: 0.65 })
-  sub.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+  const sub = makeText(slide.subtitle, 48, FONTS.regular, { r: 0.6, g: 0.6, b: 0.65 })
+  sub.lineHeight = { value: 1.4, unit: 'MULTIPLIER' }
+  sub.textAlignHorizontal = 'CENTER'
+  sub.resize(SLIDE_WIDTH - PAD.slideH * 2, sub.height)
   content.appendChild(sub)
 
   const spacer = makeFrame('Spacer')
-  spacer.resize(1, 40)
+  spacer.resize(1, 60)
   spacer.fills = []
   content.appendChild(spacer)
 
-  const meta = makeText(`${slide.team}  ·  ${slide.version}`, 14, FONTS.semiBold, {
+  const meta = makeText(`${slide.team}  ·  ${slide.version}`, 28, FONTS.semiBold, {
     r: 0.45,
     g: 0.45,
     b: 0.5,
   })
   content.appendChild(meta)
 
-  content.y = (SLIDE_HEIGHT - 300) / 2
+  content.y = (SLIDE_HEIGHT - 500) / 2  // Adjusted for larger content
   frame.appendChild(content)
 
   return frame
@@ -197,12 +303,12 @@ function buildObjectiveSlide(
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
 
-  const label = makeText('Objetivo do guideline', 13, FONTS.semiBold, COLORS.textSecondary)
-  label.letterSpacing = { value: 1, unit: 'PIXELS' }
+  const label = makeText('Objetivo do guideline', 20, FONTS.semiBold, COLORS.textSecondary)  // Increased from 13
+  label.letterSpacing = { value: 1.5, unit: 'PIXELS' }
   content.appendChild(label)
 
-  const body = makeText(slide.body, 20, FONTS.regular, COLORS.textPrimary)
-  body.lineHeight = { value: 1.7, unit: 'MULTIPLIER' }
+  const body = makeText(slide.body, 36, FONTS.regular, COLORS.textPrimary)  // Increased from 20
+  body.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
   body.layoutSizingHorizontal = 'FILL' as any
   content.appendChild(body)
 
@@ -231,15 +337,15 @@ function buildGlossarySlide(
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
 
-  const title = makeText('Glosário', 40, FONTS.bold, COLORS.textPrimary)
+  const title = makeText('Glosário', 72, FONTS.bold, COLORS.textPrimary)  // Increased from 40
   content.appendChild(title)
 
-  const sub = makeText('Termos importantes para entender este guideline.', 16, FONTS.regular, COLORS.textSecondary)
+  const sub = makeText('Termos importantes para entender este guideline.', 28, FONTS.regular, COLORS.textSecondary)  // Increased from 16
   content.appendChild(sub)
 
   content.appendChild(makeDivider())
 
-  // Two-column grid
+  // Two-column grid - limit to max 6 terms for readability
   const grid = makeFrame('Grid')
   grid.layoutMode = 'HORIZONTAL'
   grid.primaryAxisSizingMode = 'FIXED'
@@ -250,32 +356,34 @@ function buildGlossarySlide(
   grid.layoutSizingHorizontal = 'FILL' as any
 
   const col1 = makeFrame('Col 1')
-  setAutoLayout(col1, 'VERTICAL', 0, 0, 0, 0, 0)
+  setAutoLayout(col1, 'VERTICAL', PAD.gapSmall, 0, 0, 0, 0)
   col1.fills = []
   col1.layoutGrow = 1
 
   const col2 = makeFrame('Col 2')
-  setAutoLayout(col2, 'VERTICAL', 0, 0, 0, 0, 0)
+  setAutoLayout(col2, 'VERTICAL', PAD.gapSmall, 0, 0, 0, 0)
   col2.fills = []
   col2.layoutGrow = 1
 
-  const half = Math.ceil(slide.terms.length / 2)
+  // Limit to 6 terms max for readability
+  const displayTerms = slide.terms.slice(0, 6)
+  const half = Math.ceil(displayTerms.length / 2)
 
-  slide.terms.forEach((item, i) => {
+  displayTerms.forEach((item, i) => {
     const row = makeFrame(`Term: ${item.term}`)
-    setAutoLayout(row, 'HORIZONTAL', PAD.gapSmall, 16, 16, 0, 0)
+    setAutoLayout(row, 'HORIZONTAL', PAD.gapSmall, 20, 20, 0, 0)  // Increased padding
     row.fills = []
-    row.strokeWeight = 0.5
+    row.strokeWeight = 1
     row.strokes = solid(COLORS.border)
     row.strokeAlign = 'INSIDE'
 
-    const termText = makeText(item.term, 13, FONTS.semiBold, COLORS.textPrimary)
-    termText.resize(180, termText.height)
+    const termText = makeText(item.term, 28, FONTS.semiBold, COLORS.textPrimary)  // Increased from 13
+    termText.resize(280, termText.height)  // Wider column
     termText.textAutoResize = 'HEIGHT'
     row.appendChild(termText)
 
-    const defText = makeText(item.definition, 13, FONTS.regular, COLORS.textSecondary)
-    defText.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
+    const defText = makeText(item.definition, 24, FONTS.regular, COLORS.textSecondary)  // Increased from 13
+    defText.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
     defText.layoutGrow = 1
     row.appendChild(defText)
 
@@ -312,40 +420,42 @@ function buildAnatomySlide(
   content.counterAxisSizingMode = 'FIXED'
 
   // Section label
-  const sectionLabel = makeText('1 · Estrutura base', 12, FONTS.semiBold, COLORS.accent)
-  sectionLabel.letterSpacing = { value: 1, unit: 'PIXELS' }
+  const sectionLabel = makeText('1 · Estrutura base', 20, FONTS.semiBold, COLORS.accent)  // Increased from 12
+  sectionLabel.letterSpacing = { value: 1.5, unit: 'PIXELS' }
   content.appendChild(sectionLabel)
 
-  const title = makeText(slide.title, 40, FONTS.bold, COLORS.textPrimary)
+  const title = makeText(slide.title, 72, FONTS.bold, COLORS.textPrimary)  // Increased from 40
   content.appendChild(title)
 
   if (slide.body) {
-    const body = makeText(slide.body, 16, FONTS.regular, COLORS.textSecondary)
-    body.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
+    const body = makeText(slide.body, 28, FONTS.regular, COLORS.textSecondary)  // Increased from 16
+    body.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
     body.layoutSizingHorizontal = 'FILL' as any
     content.appendChild(body)
   }
 
   content.appendChild(makeDivider())
 
-  // Components list
+  // Components list - limit to 4 components for readability
   const list = makeFrame('Components')
   setAutoLayout(list, 'VERTICAL', PAD.gapSmall, 0, 0, 0, 0)
   list.fills = []
   list.layoutSizingHorizontal = 'FILL' as any
 
-  slide.components.forEach((comp) => {
+  const displayComponents = slide.components.slice(0, 4)  // Limit to 4 components
+
+  displayComponents.forEach((comp) => {
     const row = makeFrame(`Row: ${comp.name}`)
-    setAutoLayout(row, 'HORIZONTAL', PAD.gapSmall, 12, 12, 16, 16)
+    setAutoLayout(row, 'HORIZONTAL', PAD.gapSmall, 16, 16, 24, 24)  // Increased padding
     row.fills = solid(COLORS.bgSection)
-    row.cornerRadius = 8
+    row.cornerRadius = 12
     row.layoutSizingHorizontal = 'FILL' as any
 
-    const num = makeText(String(comp.index), 14, FONTS.bold, COLORS.accent)
-    num.resize(24, num.height)
+    const num = makeText(String(comp.index), 28, FONTS.bold, COLORS.accent)  // Increased from 14
+    num.resize(40, num.height)
     row.appendChild(num)
 
-    const name = makeText(comp.name, 15, FONTS.semiBold, COLORS.textPrimary)
+    const name = makeText(comp.name, 28, FONTS.semiBold, COLORS.textPrimary)  // Increased from 15
     name.layoutGrow = 1
     row.appendChild(name)
 
@@ -358,26 +468,12 @@ function buildAnatomySlide(
   content.appendChild(list)
 
   if (slide.note) {
-    const note = makeText(`⚠️  ${slide.note}`, 13, FONTS.regular, COLORS.textSecondary)
+    const note = makeText(`⚠️  ${slide.note}`, 24, FONTS.regular, COLORS.textSecondary)  // Increased from 13
     note.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
     content.appendChild(note)
   }
 
-  // Mockup placeholder (right side)
-  const mockup = makeFrame('Mockup placeholder')
-  mockup.resize(240, 480)
-  mockup.cornerRadius = 24
-  mockup.fills = solid(COLORS.bgSection)
-  mockup.strokes = solid(COLORS.border)
-  mockup.strokeWeight = 1
-  const mockLabel = makeText('Inserir mockup\nanotado', 13, FONTS.regular, COLORS.textSecondary)
-  mockLabel.textAlignHorizontal = 'CENTER'
-  mockLabel.x = 72
-  mockLabel.y = (480 - 50) / 2
-  mockup.appendChild(mockLabel)
-  mockup.x = SLIDE_WIDTH - PAD.slideH - 240
-  mockup.y = 80
-  frame.appendChild(mockup)
+  // Mockup placeholder removed - occupies valuable space without adding value
 
   frame.appendChild(content)
   return frame
@@ -717,7 +813,7 @@ function buildDoDontSlide(
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
 
-  const title = makeText(slide.title, 40, FONTS.bold, COLORS.textPrimary)
+  const title = makeText(slide.title, 72, FONTS.bold, COLORS.textPrimary)  // Increased from 40
   content.appendChild(title)
   content.appendChild(makeDivider())
 
@@ -725,38 +821,41 @@ function buildDoDontSlide(
   cols.layoutMode = 'HORIZONTAL'
   cols.primaryAxisSizingMode = 'FIXED'
   cols.counterAxisSizingMode = 'AUTO'
-  cols.itemSpacing = PAD.gap
+  cols.itemSpacing = PAD.gapLarge
   cols.fills = []
   cols.resize(SLIDE_WIDTH - PAD.slideH * 2, 1)
   cols.layoutSizingHorizontal = 'FILL' as any
 
   const buildCol = (items: string[], isdo: boolean) => {
     const col = makeFrame(isdo ? 'Do' : 'Dont')
-    setAutoLayout(col, 'VERTICAL', PAD.gapSmall, PAD.cardV, PAD.cardV, PAD.cardH, PAD.cardH)
+    setAutoLayout(col, 'VERTICAL', PAD.gap, PAD.cardV, PAD.cardV, PAD.cardH, PAD.cardH)
     col.fills = solid(isdo ? COLORS.doGreen : COLORS.dontRed)
-    col.cornerRadius = 12
+    col.cornerRadius = 16
     col.layoutGrow = 1
-    col.strokeWeight = 1.5
+    col.strokeWeight = 2
     col.strokes = solid(
       isdo ? { r: 0, g: 0.647, b: 0.314 } : COLORS.dontBorder
     )
 
-    const header = makeText(isdo ? '✅  Faça' : '❌  Evite', 16, FONTS.bold,
+    const header = makeText(isdo ? '✅  Faça' : '❌  Evite', 32, FONTS.bold,  // Increased from 16
       isdo ? { r: 0, g: 0.4, b: 0.17 } : { r: 0.75, g: 0.1, b: 0.07 }
     )
     col.appendChild(header)
 
-    items.forEach((item) => {
+    // Limit to 3 items per column for readability
+    const displayItems = items.slice(0, 3)
+
+    displayItems.forEach((item) => {
       const row = makeFrame(`Item`)
-      setAutoLayout(row, 'HORIZONTAL', 8, 0, 0, 0, 0)
+      setAutoLayout(row, 'HORIZONTAL', 12, 0, 0, 0, 0)
       row.fills = []
       row.layoutSizingHorizontal = 'FILL' as any
 
-      const dot = makeText('•', 14, FONTS.bold, COLORS.textSecondary)
+      const dot = makeText('•', 28, FONTS.bold, COLORS.textSecondary)  // Increased from 14
       row.appendChild(dot)
 
-      const text = makeText(item, 15, FONTS.regular, COLORS.textPrimary)
-      text.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
+      const text = makeText(item, 28, FONTS.regular, COLORS.textPrimary)  // Increased from 15
+      text.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
       text.layoutGrow = 1
       row.appendChild(text)
 
@@ -865,42 +964,48 @@ function buildContactSlide(
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
 
   const content = makeFrame('Content')
-  setAutoLayout(content, 'VERTICAL', PAD.gap, 0, 0, PAD.slideH, PAD.slideH)
+  setAutoLayout(content, 'VERTICAL', PAD.gapLarge, 0, 0, PAD.slideH, PAD.slideH)
   content.fills = []
   content.resize(SLIDE_WIDTH, 1)
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
-  content.y = (SLIDE_HEIGHT - 350) / 2
+  content.counterAxisAlignItems = 'CENTER'  // Center horizontally
+  content.y = (SLIDE_HEIGHT - 450) / 2
 
   const accentLine = makeFrame('Accent')
-  accentLine.resize(60, 4)
+  accentLine.resize(100, 6)  // Larger accent line
   accentLine.fills = solid(COLORS.accent)
   content.appendChild(accentLine)
 
-  const title = makeText('Comentários, dúvidas\nou feedback?', 48, FONTS.extraBold, COLORS.textLight)
+  const title = makeText('Comentários, dúvidas\nou feedback?', 80, FONTS.extraBold, COLORS.textLight)  // Increased from 48
   title.lineHeight = { value: 1.2, unit: 'MULTIPLIER' }
+  title.textAlignHorizontal = 'CENTER'
+  title.resize(SLIDE_WIDTH - PAD.slideH * 2, title.height)
   content.appendChild(title)
 
-  const sub = makeText(`Envie uma mensagem no nosso canal do Slack.`, 18, FONTS.regular, {
+  const sub = makeText(`Envie uma mensagem no nosso canal do Slack.`, 32, FONTS.regular, {  // Increased from 18
     r: 0.6, g: 0.6, b: 0.65,
   })
+  sub.textAlignHorizontal = 'CENTER'
   content.appendChild(sub)
 
-  const channel = makeText(slide.channel, 20, FONTS.semiBold, COLORS.accent)
+  const channel = makeText(slide.channel, 36, FONTS.semiBold, COLORS.accent)  // Increased from 20
   content.appendChild(channel)
 
   if (slide.links.length > 0) {
     const spacer = makeFrame('s')
-    spacer.resize(1, 16)
+    spacer.resize(1, 32)
     spacer.fills = []
     content.appendChild(spacer)
 
-    const linksTitle = makeText('Links úteis', 13, FONTS.semiBold, { r: 0.5, g: 0.5, b: 0.55 })
-    linksTitle.letterSpacing = { value: 1, unit: 'PIXELS' }
+    const linksTitle = makeText('LINKS ÚTEIS', 20, FONTS.semiBold, { r: 0.5, g: 0.5, b: 0.55 })  // Increased from 13
+    linksTitle.letterSpacing = { value: 2, unit: 'PIXELS' }
     content.appendChild(linksTitle)
 
-    slide.links.forEach((link) => {
-      const linkText = makeText(`🔗  ${link.label}`, 15, FONTS.semiBold, { r: 0.6, g: 0.7, b: 0.95 })
+    // Limit to 3 links for readability
+    const displayLinks = slide.links.slice(0, 3)
+    displayLinks.forEach((link) => {
+      const linkText = makeText(`🔗  ${link.label}`, 28, FONTS.semiBold, { r: 0.6, g: 0.7, b: 0.95 })  // Increased from 15
       content.appendChild(linkText)
     })
   }
@@ -914,17 +1019,40 @@ function buildContactSlide(
 // ─────────────────────────────────────────────
 
 export async function buildGuideline(data: GuidelineData): Promise<void> {
-  // Load essential fonts — fail fast if unavailable
+  const resolvedFonts = await resolveFontSet()
+  FONTS.regular = resolvedFonts.regular
+  FONTS.semiBold = resolvedFonts.semiBold
+  FONTS.bold = resolvedFonts.bold
+  FONTS.extraBold = resolvedFonts.extraBold
+
+  const fontsToLoad = uniqueFonts([
+    FONTS.regular,
+    FONTS.semiBold,
+    FONTS.bold,
+    FONTS.extraBold,
+  ])
+
   const fontResults = await Promise.allSettled(
-    REQUIRED_FONTS.map((f) => figma.loadFontAsync(f))
+    fontsToLoad.map((font) => loadFontWithTimeout(font))
   )
-  const essentialFailed = fontResults.find((r) => r.status === 'rejected')
-  if (essentialFailed) {
-    throw new Error('Fonte Inter não disponível. Verifique se a fonte está instalada no sistema.')
+
+  const hasFontLoadFailure = fontResults.some((result) => result.status === 'rejected')
+  if (hasFontLoadFailure) {
+    const fallback = FONTS.regular
+    try {
+      await loadFontWithTimeout(fallback)
+      FONTS.semiBold = fallback
+      FONTS.bold = fallback
+      FONTS.extraBold = fallback
+      figma.notify('⚠️ Alguns pesos de fonte não estavam disponíveis. O Guidely usou uma variação única para concluir a exportação.', { timeout: 4500 })
+    } catch {
+      throw new Error('Não foi possível carregar nenhuma fonte para criar os slides.')
+    }
   }
 
-  // Try optional fonts but don't fail
-  await Promise.allSettled(OPTIONAL_FONTS.map((f) => figma.loadFontAsync(f)))
+  if (resolvedFonts.usingInterFallback) {
+    figma.notify(`⚠️ Fonte Inter indisponível. Usando ${resolvedFonts.primaryFamily}.`, { timeout: 3500 })
+  }
 
   const page = figma.currentPage
   let slideNum = 1

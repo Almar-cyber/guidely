@@ -134,10 +134,15 @@ npm run build
 | `contact` | Slide final com canal Slack e links |
 
 O visual dos slides segue o padrão do **CHO PX Guideline** com tokens **Andes X**:
-- Header escuro `#0d0d1b`
-- Fundo branco
-- Accent MP green `#00a650` (cover)
-- Labels e tags Andes X blue `#434be4`
+- **Formato:** 1920x1080 (16:9) - padrão moderno para projetores/TVs
+- **Tipografia:** Inter, tamanhos profissionais (72-120px títulos, 28-36px corpo)
+- **Header escuro** `#0d0d1b`
+- **Fundo branco** para slides internos
+- **Accent MP green** `#00a650` (cover)
+- **Labels e tags** Andes X blue `#434be4`
+- **Legibilidade garantida** em projetores, Zoom e dispositivos móveis
+
+> 📋 Ver [SLIDE_GUIDELINES.md](SLIDE_GUIDELINES.md) para especificações completas
 
 ---
 

@@ -397,7 +397,7 @@ export default function App() {
       return
     }
     const slideCount = guideline.slides.length
-    const timeoutMs = Math.min(120000, Math.max(45000, slideCount * 5000))
+    const timeoutMs = Math.min(480000, Math.max(90000, slideCount * 8000))
 
     setBuildError('')
     setIsBuilding(true)
@@ -408,7 +408,7 @@ export default function App() {
     buildTimeoutRef.current = setTimeout(() => {
       setIsBuilding((current) => {
         if (current) {
-          setBuildError(`Timeout (${Math.round(timeoutMs / 1000)}s): o plugin não respondeu. Verifique se a fonte Inter está instalada e tente novamente.`)
+          setBuildError(`A criação demorou mais que ${Math.round(timeoutMs / 1000)}s e ainda não houve confirmação do plugin. Aguarde alguns segundos: se nada aparecer no canvas, tente criar novamente.`)
           return false
         }
         return current

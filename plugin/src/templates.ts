@@ -2,9 +2,9 @@
 // Design tokens
 // ─────────────────────────────────────────────
 
-export const SLIDE_WIDTH = 1440
-export const SLIDE_HEIGHT = 900
-export const SLIDE_GAP = 80
+export const SLIDE_WIDTH = 1920   // Updated to modern 16:9 standard (was 1440)
+export const SLIDE_HEIGHT = 1080  // Updated to modern 16:9 standard (was 900)
+export const SLIDE_GAP = 100       // Increased spacing between slides
 
 // Andes X ax-color tokens (source: 01 Main library [Andes X])
 export const COLORS = {
@@ -63,17 +63,18 @@ export const OPTIONAL_FONTS = [
 
 // ─────────────────────────────────────────────
 // Padding / spacing constants
+// Updated for 1920x1080 and better readability
 // ─────────────────────────────────────────────
 
 export const PAD = {
-  slideH: 80,    // horizontal slide padding
-  slideTop: 64,  // top padding below header bar
-  slideBot: 64,  // bottom slide padding
-  cardH: 40,     // card horizontal padding
-  cardV: 32,     // card vertical padding
-  headerH: 80,
-  headerV: 20,
-  gap: 24,
-  gapSmall: 12,
-  gapLarge: 40,
+  slideH: 100,   // horizontal slide padding (was 80)
+  slideTop: 80,  // top padding below header bar (was 64)
+  slideBot: 80,  // bottom slide padding (was 64)
+  cardH: 48,     // card horizontal padding (was 40)
+  cardV: 40,     // card vertical padding (was 32)
+  headerH: 100,  // header horizontal padding (was 80)
+  headerV: 24,   // header vertical padding (was 20)
+  gap: 32,       // default gap (was 24)
+  gapSmall: 16,  // small gap (was 12)
+  gapLarge: 48,  // large gap (was 40)
 }

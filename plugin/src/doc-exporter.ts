@@ -93,8 +93,46 @@ function renderSlide(slide: Slide): string {
   }
 }
 
+// Collect all slides that need mockup images
+function collectImageNotes(data: GuidelineData): string {
+  const notes: string[] = []
+  data.slides.forEach((s, i) => {
+    const note = 'imageNote' in s ? (s as { imageNote?: string }).imageNote : undefined
+    if (note) {
+      const name = 'title' in s ? (s as { title: string }).title : s.type
+      notes.push(`- **Slide ${i + 1} — ${name}:** ${note}`)
+    }
+  })
+  return notes.join('\n')
+}
+
+const DELIVERY_CHECKLIST = `
+## ✅ Checklist de entrega — antes de apresentar para lideranças
+
+### Mockups e visuais (obrigatório)
+Cada slide marcado com 📸 abaixo precisa de um screenshot real inserido no Figma.
+Sem os mockups, o guideline não comunica o visual do componente para stakeholders.
+
+### Revisão de conteúdo
+- [ ] Todos os termos do glossário refletem a nomenclatura atual do time
+- [ ] Os casos de uso cobrem os fluxos reais em produção
+- [ ] Os países/sites marcados estão corretos e atualizados
+- [ ] As regras de Do's & Don'ts foram validadas com o time de design
+- [ ] O wording padrão foi aprovado pela pessoa responsável por copy/UX writing
+- [ ] A versão e data na capa estão corretos
+
+### Slides com mockups necessários
+`
+
 export function exportToMarkdown(data: GuidelineData): string {
-  const header = `<!-- Guideline gerado por UX Guidelines AI · ${new Date().toLocaleDateString('pt-BR')} -->\n\n`
+  const date = new Date().toLocaleDateString('pt-BR')
+  const imageNotes = collectImageNotes(data)
+
+  const deliverySection = imageNotes
+    ? `${DELIVERY_CHECKLIST}${imageNotes}\n\n---\n\n`
+    : ''
+
+  const header = `# ${data.title} — Guideline\n_Gerado por Guidely · ${date}_\n\n`
   const slides = data.slides.map((s) => renderSlide(s)).join('\n\n---\n\n')
-  return header + slides
+  return header + deliverySection + slides
 }

@@ -50,7 +50,7 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
   return /(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)
 }
 
-const MAX_CONTEXT_CHARS = 70000
+const MAX_CONTEXT_CHARS = 120000
 const MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION = 38000
 const MAX_MESSAGES = 16
 const MAX_MESSAGES_FOR_FORCED_GENERATION = 10
@@ -142,32 +142,117 @@ Rules:
 - Always in the same language as the conversation
 - Examples: countries (["MLB 🇧🇷", "MLA 🇦🇷", "MLM 🇲🇽", "Todos"]), yes/no (["Sim, inclui", "Não, coming soon"]), versions (["V1", "Coming soon"])
 
-## Guideline structure (always include all relevant sections)
+## Guideline structure — padrão CHO Mercado Pago
 
-- **cover**: title, subtitle (what it is in one line), team, version
-- **objective**: what this component is, why it exists, who owns it
-- **glossary**: all key terms used in the document (extract from Figma content when possible)
-- **anatomy**: numbered list of components (required vs optional), spacing specs note
-- **use_case_map**: table — which components appear in which use cases
-- **use_case**: one slide per use case (with countries, clear description from Figma, component list)
-- **behavior**: one slide per behavior category (states, currency, breakpoints, visibility, helper, anticipo, thumbnail)
-- **do_dont**: concrete rules extracted from the design + the designer's answers
-- **wording**: error messages per country with emoji flags (if applicable)
-- **contact**: slack channel and useful links
+Seguir o padrão visual e de conteúdo do CHO PX Guideline (referência interna do Mercado Pago).
+Sempre incluir todas as seções relevantes, nessa ordem:
 
-## Content quality rules
+### 1. cover
+- title: nome do componente/tela
+- subtitle: uma frase descritiva ("Tela de entrada de valor de transações")
+- team: time dono (ex: "CCAP / PX")
+- version: versão e mês/ano (ex: "V1 · MAR 2026")
 
-- Extract real content from <figma_content> — do NOT invent placeholder text
-- For anatomy components, use the actual names from the Figma file
-- For use cases, use the actual case names found in the file (PAGAMENTO PIX, PRESETS, etc.)
-- For behavior rows, use: { label: "Estado zero", value: "Campo vazio, cursor posicionado no início" }
-- For wording, always include country variants with flags
-- For do_dont, make rules specific and actionable (not generic)
-- Image placeholders: add a note field "imageNote" to slides that need mockups
+### 2. objective
+- body: 2-3 parágrafos cobrindo:
+  - O que é o componente/tela
+  - Por que existe / qual problema resolve
+  - Quem é owner (time responsável)
+  - Contexto de uso (onde aparece no produto)
+
+### 3. glossary
+- Extrair do Figma: 8-12 termos domain-specific usados nos slides
+- Incluir siglas técnicas reais: AM, TCMP, CHO, CDU, RyC, FS, etc.
+- Cada definição: 1 frase clara, sem jargão desnecessário
+- Formato: { term: "TCMP", definition: "Tarjeta de crédito Mercado Pago" }
+
+### 4. anatomy
+- title: "Estrutura base" ou "Anatomía"
+- body: breve descrição de como a estrutura funciona
+- components: lista numerada COM distinção required/optional
+  - Usar nomes reais do Figma (Header, Amount Field, Helper, Anticipo, etc.)
+  - Separar "obrigatório" de "optativo"
+- note: specs de espaçamento se disponíveis no Figma
+- imageNote: "Screenshot anotado mostrando os [N] componentes numerados e suas posições relativas"
+
+### 5. use_case_map
+- title: "Elementos de cada caso de uso"
+- caseNames: nomes reais dos CDUs encontrados no Figma
+- rows: cada componente (Header, Amount Field, etc.) com boolean por CDU
+- Incluir TODOS os CDUs identificados no Figma, não inventar
+
+### 6. use_case (um slide por CDU)
+- title: nome em CAPS como no Figma (ex: "PAGAMENTO PIX", "PRESETS")
+- countries: array com flags dos países aplicáveis (["MLB 🇧🇷"], ["MLA 🇦🇷"], etc.)
+- body: descrição do que é exibido nesse CDU, seguindo este padrão:
+  "Nesse caso de uso, exibimos:
+  - [componente]: [o que faz]
+  - [componente]: [o que faz]"
+- components: lista dos componentes usados (ex: ["Header", "Amount Field", "Helper", "CTA"])
+- imageNote: "Inserir screenshot da tela do CDU [nome] em estado [default/error]"
+
+### 7. behavior (um slide por categoria)
+- Categorias a incluir quando relevantes:
+  - Estados (Estado zero, Monto cargado, Focus, Sufixo, Erro)
+  - Currency (Pesos, Reais, Dólares — marcando qual site usa qual)
+  - Visibilidade (seguir preferência da home page)
+  - Breakpoints tipográficos (por número de dígitos)
+  - Helper (com saldo / sem saldo)
+  - Anticipo (Caution, Informative, Positive)
+  - Thumbnail (com imagem, com ícone genérico)
+- rows format: { label: "Estado zero", value: "Campo vazio, cursor piscando. CTA desabilitada." }
+- description: contexto de quando/por que esse comportamento existe
+- imageNote: "Inserir screenshots dos [N] estados lado a lado"
+
+### 8. do_dont
+- title: tema específico (ex: "Uso do Anticipo", "Hierarquia visual")
+- do: array de regras positivas específicas ao componente (não genéricas)
+  - ✅ Usar Anticipo Caution quando saldo é insuficiente para o valor inserido
+- dont: array de regras negativas com impacto claro
+  - ❌ Nunca mostrar dois Anticipos ao mesmo tempo no mesmo estado
+- Mínimo 3 regras por lado, máximo 5
+
+### 9. wording (quando aplicável)
+- title: "Keys wording default" ou "Erros — Wording padrão"
+- Para cada mensagem de erro/sucesso:
+  - name: nome do tipo (ex: "Erro: Monto máximo superado")
+  - objective: "Que o usuário ingresse um valor menor ao máximo possível"
+  - variants: por país com flag emoji
+    - { country: "MLA", flag: "🇦🇷", text: "Ingresa un monto menor a {$ X}." }
+    - { country: "MLB", flag: "🇧🇷", text: "Insira um valor menor que {R$ X}." }
+  - rationale: (opcional) justificativa da escolha de wording
+
+### 10. contact
+- channel: canal de Slack para dúvidas (ex: "#soporteux_cho_px")
+- links: array de links relevantes
+  - Figma do handoff
+  - Documentação do design system (Andes X)
+  - Banco de logos/assets relevantes
+
+## Regras de qualidade de conteúdo
+
+1. **Extrair do Figma**: Use APENAS conteúdo real da <figma_content> — nunca invente nomes de CDUs, componentes ou comportamentos
+2. **Especificidade**: Cada descrição deve ser específica ao componente documentado, não genérica
+3. **Padrão CHO**: Tom didático, contextual e prático — como um colega explicando para outro designer
+4. **Países com flags**: Sempre marcar aplicabilidade geográfica com 🇧🇷 🇦🇷 🇲🇽
+5. **imageNote obrigatório**: Todo slide de anatomy, use_case e behavior DEVE ter imageNote descrevendo exatamente o que inserir
+6. **Nomenclatura consistente**: Usar os mesmos nomes do Figma e do design system — não renomear
+7. **Fluxo lógico**: Os slides devem contar uma história: do geral (anatomia) para o específico (CDUs) para o técnico (comportamentos)
+8. **Completude vs. velocidade**: Melhor gerar com "A confirmar" do que deixar campo vazio — stakeholders precisam ver a estrutura completa
+
+## Checklist pré-geração
+
+Antes de chamar generate_guideline, verificar:
+- ✓ Glossário tem 6+ termos domain-specific reais
+- ✓ Anatomy tem 4+ componentes com required/optional
+- ✓ Pelo menos 2 use_case slides com countries
+- ✓ Pelo menos 1 behavior slide com estados
+- ✓ Do/dont com 3+ regras específicas
+- ✓ Team name e version definidos
 
 ## Language
 
-Respond in the same language the designer uses (Portuguese or Spanish). Keep tone friendly and professional.`
+Responder no idioma do designer (Português ou Espanhol). Tom: direto, didático, profissional.`
 }
 
 const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
