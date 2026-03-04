@@ -13,13 +13,20 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
   const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
   const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
   const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every(isStr)
+  const nonEmpty = (v: unknown, fallback: string): string => {
+    if (isStr(v) && v.trim()) return v.trim()
+    return fallback
+  }
 
   if (!isObj(data)) return { ok: false, error: 'Não é um objeto' }
-  const d = data
+  const source = isObj((data as { guideline?: unknown }).guideline)
+    ? (data as { guideline: Record<string, unknown> }).guideline
+    : isObj((data as { data?: unknown }).data)
+      ? (data as { data: Record<string, unknown> }).data
+      : data
 
-  if (!isStr(d.title)) return { ok: false, error: 'Campo "title" ausente ou inválido' }
-  if (!isStr(d.team)) return { ok: false, error: 'Campo "team" ausente ou inválido' }
-  if (!isStr(d.version)) return { ok: false, error: 'Campo "version" ausente ou inválido' }
+  const d = source
+
   if (!Array.isArray(d.slides) || d.slides.length === 0) return { ok: false, error: 'Campo "slides" ausente ou vazio' }
 
   const validTypes = ['cover','objective','glossary','anatomy','use_case_map','use_case','behavior','do_dont','wording','contact']
@@ -94,7 +101,15 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
     }
   }
 
-  return { ok: true, data }
+  const coverSlide = d.slides.find((slide) => isObj(slide) && slide.type === 'cover') as Record<string, unknown> | undefined
+  const normalized = {
+    ...d,
+    title: nonEmpty(d.title, nonEmpty(coverSlide?.title, 'Guideline A confirmar')),
+    team: nonEmpty(d.team, nonEmpty(coverSlide?.team, 'A confirmar')),
+    version: nonEmpty(d.version, nonEmpty(coverSlide?.version, 'A confirmar')),
+  }
+
+  return { ok: true, data: normalized }
 }
 
 // ─── Figma OAuth ─────────────────────────────────────────────
@@ -300,8 +315,8 @@ export async function streamChat(
   refreshIdleWatchdog()
   const decoder = new TextDecoder()
   let buffer = ''
-  let toolInputAccum = ''
-  let toolInputFromStart = false
+  let toolInputDeltaAccum = ''
+  let toolInputStart: unknown = null
   let inToolUse = false
   let hasReceivedData = false
   let guidelineEmitted = false
@@ -327,6 +342,41 @@ export async function streamChat(
     }
 
     return null
+  }
+
+  function parseToolUseInput(deltaJson: string, startInput: unknown): unknown {
+    const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+
+    let parsedStart: unknown = null
+    if (typeof startInput === 'string') {
+      const trimmed = startInput.trim()
+      if (trimmed) {
+        try {
+          parsedStart = JSON.parse(trimmed)
+        } catch {
+          parsedStart = startInput
+        }
+      }
+    } else if (startInput !== undefined && startInput !== null) {
+      parsedStart = startInput
+    }
+
+    const trimmedDelta = deltaJson.trim()
+    if (trimmedDelta) {
+      try {
+        const parsedDelta = JSON.parse(trimmedDelta)
+        if (isObj(parsedStart) && isObj(parsedDelta)) {
+          return { ...parsedStart, ...parsedDelta }
+        }
+        return parsedDelta
+      } catch {
+        if (parsedStart !== null && parsedStart !== undefined) return parsedStart
+        throw new Error('Tool input JSON incompleto')
+      }
+    }
+
+    if (parsedStart !== null && parsedStart !== undefined) return parsedStart
+    throw new Error('Tool input vazio')
   }
 
   // If Claude responded with text containing JSON instead of calling the tool, try to extract it
@@ -379,15 +429,11 @@ export async function streamChat(
           const block = event.content_block as Record<string, unknown>
           if (block?.type === 'tool_use' && block?.name === 'generate_guideline') {
             inToolUse = true
-            toolInputAccum = ''
-            toolInputFromStart = false
+            toolInputDeltaAccum = ''
+            toolInputStart = null
             const immediateInput = block.input
-            if (immediateInput && typeof immediateInput === 'object') {
-              toolInputAccum = JSON.stringify(immediateInput)
-              toolInputFromStart = true
-            } else if (typeof immediateInput === 'string') {
-              toolInputAccum = immediateInput
-              toolInputFromStart = true
+            if (immediateInput !== undefined && immediateInput !== null) {
+              toolInputStart = immediateInput
             }
             cb.onGenerating?.()
           }
@@ -396,15 +442,15 @@ export async function streamChat(
         if (type === 'content_block_delta') {
           const delta = event.delta as Record<string, unknown>
           if (delta?.type === 'text_delta') { const t = delta.text as string; fullText += t; cb.onText(t) }
-          if (delta?.type === 'input_json_delta' && !toolInputFromStart) {
-            toolInputAccum += (delta.partial_json as string) ?? ''
+          if (delta?.type === 'input_json_delta') {
+            toolInputDeltaAccum += (delta.partial_json as string) ?? ''
           }
         }
 
         if (type === 'content_block_stop' && inToolUse) {
           inToolUse = false
           try {
-            const raw = JSON.parse(toolInputAccum)
+            const raw = parseToolUseInput(toolInputDeltaAccum, toolInputStart)
             const result = validateGuideline(raw)
             if (result.ok) {
               guidelineEmitted = true
@@ -416,7 +462,10 @@ export async function streamChat(
             }
           } catch (e) {
             const errMsg = String(e).slice(0, 120)
-            const jsonLen = toolInputAccum.length
+            const startLen = typeof toolInputStart === 'string'
+              ? toolInputStart.length
+              : toolInputStart ? JSON.stringify(toolInputStart).length : 0
+            const jsonLen = toolInputDeltaAccum.length + startLen
             clearWatchdogs()
             cb.onError(`Erro ao processar guideline (${errMsg}) — JSON length: ${jsonLen}. Tente escrever "gerar" novamente.`)
             return
