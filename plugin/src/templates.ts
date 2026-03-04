@@ -46,9 +46,9 @@ export const COLORS = {
 // ax-font tokens: family=Inter, weights=400/600/700
 export const FONTS = {
   regular:  { family: 'Inter', style: 'Regular' },   // ax-font/weight/regular  400
-  semiBold: { family: 'Inter', style: 'SemiBold' },  // ax-font/weight/semibold 600
+  semiBold: { family: 'Inter', style: 'Semi Bold' }, // ax-font/weight/semibold 600
   bold:     { family: 'Inter', style: 'Bold' },      // ax-font/weight/bold     700
-  extraBold:{ family: 'Inter', style: 'ExtraBold' },
+  extraBold:{ family: 'Inter', style: 'Extra Bold' },
 }
 
 export const REQUIRED_FONTS = [
