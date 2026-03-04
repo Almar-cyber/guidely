@@ -1,401 +1,196 @@
-# Guidely - Slide Design Guidelines
+# Guidely — Padrões dos Slides Gerados
 
-> Diretrizes profissionais para slides legíveis e impactantes em apresentações a stakeholders
-
----
-
-## 🎯 Objetivo
-
-Garantir que todos os slides gerados pelo Guidely sejam:
-- **Legíveis** em projetores, TVs, Zoom e dispositivos móveis
-- **Profissionais** seguindo padrões corporativos modernos
-- **Impactantes** com hierarquia visual clara
-- **Acessíveis** com contraste adequado
+> Referência para designers e lideranças entenderem o que o Guidely gera, como completar, e como garantir qualidade para apresentações a stakeholders.
 
 ---
 
 ## 📐 Especificações Técnicas
 
-### Formato
-- **Dimensões:** 1920x1080 (16:9)
-- **Margem mínima:** 100px das bordas
-- **Espaçamento entre slides:** 100px
+| Propriedade | Valor |
+|---|---|
+| **Dimensões** | 1440 × 900px (16:10) |
+| **Margem horizontal** | 80px |
+| **Margem vertical** | 64px |
+| **Gap entre slides no canvas** | 80px |
+| **Fonte** | Inter (400, 600, 700, 800) |
+| **Design system** | Andes X tokens |
 
-### Tipografia (família Inter)
+### Tipografia — tamanhos usados
 
-| Elemento | Tamanho | Peso | Uso |
-|----------|---------|------|-----|
-| **Título Cover** | 120px | Extra Bold (800) | Slide de abertura |
-| **Subtítulo Cover** | 48px | Regular (400) | Slide de abertura |
-| **Títulos principais** | 72px | Bold (700) | Títulos de slides internos |
-| **Seção labels** | 20px | Semi Bold (600) | Labels de seção (UPPERCASE) |
-| **Corpo de texto** | 28-36px | Regular (400) | Texto descritivo |
-| **Itens de lista** | 28px | Regular (400) | Bullets, tabelas |
-| **Tags/Labels** | 24px | Semi Bold (600) | Tags de componentes |
-| **Header bar** | 18px | Semi Bold (600) | Cabeçalho dos slides |
-| **Metadados** | 28px | Semi Bold (600) | Informações secundárias |
-
-### Line Height
-- **Títulos:** 1.1-1.2
-- **Corpo:** 1.5-1.6
-
-### Contraste de Cores (Andes X Tokens)
-
-| Uso | Token | Valor | Contraste |
-|-----|-------|-------|-----------|
-| Texto primário | `ax-gray/900` | `#282833` | 14.8:1 (AAA) |
-| Texto secundário | `ax-gray/700` | `#646587` | 5.2:1 (AA) |
-| Texto em fundo escuro | White | `#ffffff` | 21:1 (AAA) |
-| Accent | `ax-blue/700` | `#434be4` | 4.8:1 (AA) |
-| MP Green | `al-green/500` | `#00a650` | 3.6:1 (AA Large) |
+| Elemento | Tamanho | Peso |
+|---|---|---|
+| Título Cover | 72px | Extra Bold |
+| Títulos de slides | 40px | Bold |
+| Labels de seção | 12px | Semi Bold (UPPERCASE) |
+| Corpo de texto | 16-20px | Regular |
+| Células de tabela | 14px | Regular / Semi Bold |
+| Tags e chips | 11px | Semi Bold |
+| Header bar | 12px | Semi Bold |
 
 ---
 
-## 📋 Regras por Tipo de Slide
+## 🖼️ Sobre Mockups — Como Completar os Slides
 
-### 1. Cover Slide (Capa)
+**O Guidely gera a estrutura e o conteúdo textual dos slides, mas os mockups precisam ser inseridos manualmente pelo designer.**
 
-**Propósito:** Causar primeira impressão forte e profissional
+Todo slide que precisa de imagem tem um placeholder cinza com o texto descrevendo o que inserir:
 
-**Estrutura:**
-- ✅ Título centralizado: 120px
-- ✅ Subtítulo centralizado: 48px
-- ✅ Metadados centralizados: 28px
-- ✅ Linha de accent (100x6px)
-- ✅ Fundo escuro (`#0d0d1b`)
-- ✅ Espaçamento generoso (gap: 32-60px)
+> _"Inserir tela do CDU Pix em estado default"_
 
-**Hierarquia:**
-```
-Label "GUIDELINE" (20px, MP Green)
-      ↓ 32px
-Título (120px, Bold, Branco)
-      ↓ 32px
-Subtítulo (48px, Regular, Cinza)
-      ↓ 60px
-Metadados (28px, SemiBold, Cinza)
-```
+### Como inserir mockups corretamente
 
-**❌ Evite:**
-- Alinhar à esquerda (deve ser centralizado)
-- Fontes menores que especificado
-- Mais de 2 linhas no título
+1. **Exporte o frame do Figma**: selecione a tela relevante → Export → PNG 2x
+2. **Localize o placeholder** no slide gerado (retângulo cinza à direita)
+3. **Substitua**: clique no placeholder → selecione a imagem → ajuste o crop
+
+### Quais slides precisam de mockup
+
+| Tipo de slide | O que inserir |
+|---|---|
+| **Anatomy** | Screenshot anotado da tela com os componentes numerados |
+| **Use Case** | Screenshot da tela no estado default do CDU |
+| **Behavior** | Screenshots dos estados lado a lado (idle / focus / error) |
+| **Wording** | Screenshot da tela onde a mensagem de erro aparece |
 
 ---
 
-### 2. Objective Slide (Objetivo)
+## 📋 Padrão de Conteúdo — Baseado no CHO PX Guideline
 
-**Propósito:** Comunicar a razão do guideline de forma clara
+O Guidely segue o padrão de conteúdo do CHO PX Guideline do Mercado Pago. Cada tipo de slide tem um padrão específico:
 
-**Estrutura:**
-- ✅ Label: 20px (UPPERCASE)
-- ✅ Corpo: 36px (máx 3-4 linhas)
-- ✅ Fundo branco
-- ✅ Header bar com título do guideline
+### Cover
+- Fundo escuro `#0d0d1b`
+- Label "GUIDELINE" em verde MP `#00a650`
+- Título grande + subtítulo + team · versão
+- Linha de accent no topo (80×4px, verde)
 
-**❌ Evite:**
-- Parágrafos longos (máx 3-4 frases)
-- Texto corrido sem quebras
+### Objective
+- Label de seção no topo
+- Corpo em 2-3 parágrafos: o que é, por que existe, quem é owner
+- **Máximo**: 4 frases por parágrafo
 
----
+### Glossary
+- Grid de 2 colunas
+- Termos domain-specific reais (TCMP, AM, CDU, RyC…)
+- **Máximo**: 10 termos por slide (se houver mais, divida em múltiplos slides)
+- Definição: máximo 2 linhas
 
-### 3. Glossary Slide (Glossário)
+### Anatomy
+- Lista numerada de componentes com tag Obrigatório/Optativo
+- Placeholder de mockup anotado à direita
+- Note de specs de espaçamento quando disponível no Figma
+- **Máximo**: 9 componentes por slide
 
-**Propósito:** Definir termos importantes
+### Use Case Map
+- Tabela com cabeçalho escuro
+- Linhas zebra (branco/cinza)
+- CDUs nas colunas, componentes nas linhas
+- ✅ / — para presença/ausência
 
-**Estrutura:**
-- ✅ Título: 72px
-- ✅ Subtítulo: 28px
-- ✅ Grid de 2 colunas
-- ✅ Termo: 28px (SemiBold)
-- ✅ Definição: 24px (Regular)
-- ✅ **LIMITE: 6 termos máximo** (3 por coluna)
+### Use Case (por CDU)
+- Título em CAPS (ex: "PAGAMENTO PIX")
+- Tags de países com flags (🇧🇷 🇦🇷 🇲🇽)
+- Corpo no padrão:
+  ```
+  Nesse CDU exibimos:
+  • Header com título e nome do recebedor
+  • Amount Field para input do valor
+  • ...
+  ```
+- Lista de componentes em chips/tags
+- **Máximo**: 5 bullets no corpo
+- Placeholder de mockup à direita
 
-**Densidade:**
-```
-Se glossary.terms.length > 6:
-  → Criar múltiplos slides
-  → Máximo 6 termos por slide
-```
+### Behavior (por categoria)
+- Tabela de estados com header escuro
+- Formato: **Estado/Condição** | **Descrição do que aparece na tela**
+- Exemplo: `Estado zero | Campo vazio, cursor piscando. CTA desabilitada.`
+- **Máximo**: 6 linhas na tabela
+- Placeholder de mockup à direita
 
-**❌ Evite:**
-- Mais de 6 termos em um slide
-- Definições longas (máx 2 linhas)
-- Fontes menores que 24px
+### Do/Dont
+- Duas colunas: verde (✅ Faça) e vermelho (❌ Evite)
+- Regras específicas ao componente — não genéricas
+- **Máximo**: 4 regras por coluna
+- Cada regra: máximo 2 linhas
 
----
+### Wording
+- Card por tipo de mensagem (erro, sucesso, etc.)
+- Objetivo da mensagem (1 frase)
+- Chips por país: 🇧🇷 `Insira um valor menor que {R$ X}.` | 🇦🇷 `Ingresa un monto menor a {$ X}.`
+- Racional quando relevante (por que essa frase, não outra)
 
-### 4. Anatomy Slide (Anatomia)
-
-**Propósito:** Mostrar estrutura de componentes
-
-**Estrutura:**
-- ✅ Label seção: 20px
-- ✅ Título: 72px
-- ✅ Corpo descritivo: 28px (opcional, máx 2 linhas)
-- ✅ Lista de componentes: 28px
-- ✅ Tags: 24px
-- ✅ **LIMITE: 4 componentes máximo**
-
-**Componente Row:**
-```
-[Número (28px)] [Nome (28px, grow)] [Tag (24px)]
-     40px           variável            auto
-```
-
-**❌ Evite:**
-- Mais de 4 componentes por slide
-- Mockup placeholders vazios (removido)
-- Descrições longas em cada componente
-
----
-
-### 5. Use Case Slide (Caso de Uso)
-
-**Propósito:** Demonstrar aplicação prática
-
-**Estrutura:**
-- ✅ Label seção: 20px
-- ✅ Título + tags países: 72px + 24px
-- ✅ **Descrição em bullets** (não parágrafo): 28px
-- ✅ Lista componentes: 24px tags
-- ✅ Mockup removido (economiza espaço)
-
-**❌ Evite:**
-- Parágrafos corridos (use bullets)
-- Mais de 3-4 bullets
-- Mockups vazios
+### Contact
+- Fundo escuro `#0d0d1b`
+- Canal de Slack em destaque
+- Máximo 3-4 links úteis
 
 ---
 
-### 6. Behavior Slide (Comportamento)
+## 🎨 Paleta de Cores — Tokens Andes X
 
-**Propósito:** Documentar estados e condições
-
-**Estrutura:**
-- ✅ Label seção: 20px
-- ✅ Título: 72px
-- ✅ Descrição (opcional): 28px
-- ✅ Tabela: Headers 28px, Células 24px
-- ✅ **LIMITE: 4 linhas máximo**
-
-**❌ Evite:**
-- Mais de 4 linhas na tabela
-- Textos longos nas células
-
----
-
-### 7. Do/Dont Slide (Boas Práticas)
-
-**Propósito:** Orientar uso correto e incorreto
-
-**Estrutura:**
-- ✅ Título: 72px
-- ✅ Header colunas: 32px
-- ✅ Itens: 28px
-- ✅ **LIMITE: 3 itens por coluna**
-- ✅ Gap entre colunas: 48px
-
-**Visual:**
-```
-DO (verde)          DONT (vermelho)
-✅ Faça (32px)      ❌ Evite (32px)
-• Item (28px)       • Item (28px)
-• Item (28px)       • Item (28px)
-• Item (28px)       • Item (28px)
-```
-
-**❌ Evite:**
-- Mais de 3 itens por lado
-- Itens com mais de 2 linhas
+| Uso | Token | Valor |
+|---|---|---|
+| Fundo geral | — | `#ffffff` |
+| Fundo cards | `ax-gray/100` | `#f4f5f9` |
+| Fundo dark (cover, contact) | `ax-dark-gray/200` | `#0d0d1b` |
+| Texto primário | `ax-gray/900` | `#282833` |
+| Texto secundário | `ax-gray/700` | `#646587` |
+| Accent (labels, tags) | `ax-blue/700` | `#434be4` |
+| MP Green (cover accent) | `al-green/500` | `#00a650` |
+| Fundo "Faça" | `ax-green/100` | `#defade` |
+| Fundo "Evite" | `ax-red/100` | `#ffe5e9` |
+| Borda | `ax-gray/300` | `#d0d4e6` |
 
 ---
 
-### 8. Wording Slide (Textos Padrão)
+## ✅ Checklist — Antes de apresentar para lideranças
 
-**Propósito:** Padronizar mensagens
-
-**Estrutura:**
-- ✅ Label seção: 20px
-- ✅ Título: 72px
-- ✅ Nome erro: 32px
-- ✅ Objetivo: 24px
-- ✅ Variantes: 24px em chips
-- ✅ **LIMITE: 2 erros por slide**
-
-**❌ Evite:**
-- Mais de 2 erros por slide
-- Mais de 3 variantes por erro
-
----
-
-### 9. Contact Slide (Contato)
-
-**Propósito:** Deixar impressão final forte e facilitar contato
-
-**Estrutura:**
-- ✅ Título centralizado: 80px
-- ✅ Subtítulo centralizado: 32px
-- ✅ Canal Slack: 36px
-- ✅ Links: 28px
-- ✅ **LIMITE: 3 links máximo**
-- ✅ Fundo escuro (`#0d0d1b`)
-- ✅ Linha de accent (100x6px)
-
-**Hierarquia:**
-```
-Accent line (100x6px, Blue)
-      ↓ 48px
-Título (80px, ExtraBold, Branco)
-      ↓ 48px
-Subtítulo (32px, Regular, Cinza)
-      ↓ 48px
-Canal (36px, SemiBold, Blue)
-      ↓ 32px
-"LINKS ÚTEIS" (20px, UPPERCASE)
-      ↓ 16px
-Links (28px, cada)
-```
-
-**❌ Evite:**
-- Alinhar à esquerda (deve ser centralizado)
-- Mais de 3 links
-- Fontes menores que 28px
-
----
-
-## 🎨 Paleta de Cores (Andes X)
-
-### Backgrounds
-```typescript
-bg:        #ffffff  // Slides claros
-bgDark:    #0d0d1b  // Cover, Contact
-bgSection: #f4f5f9  // Cards, componentes
-```
-
-### Text
-```typescript
-textPrimary:   #282833  // Títulos, corpo
-textSecondary: #646587  // Descrições
-textLight:     #ffffff  // Texto em fundo escuro
-```
-
-### Accent
-```typescript
-accent:    #434be4  // Andes X Blue (seções, tags)
-mpGreen:   #00a650  // MP Green (cover, sucesso)
-doGreen:   #defade  // Fundo "Faça"
-dontRed:   #ffe5e9  // Fundo "Evite"
-```
-
-### Borders
-```typescript
-border:      #d0d4e6  // Bordas sutis
-borderLight: #e7e9f3  // Bordas muito sutis
-```
-
----
-
-## ✅ Checklist de QA Pre-Export
-
-Antes de gerar slides para stakeholders, verificar:
-
-### Legibilidade
-- [ ] Títulos ≥ 72px
-- [ ] Corpo de texto ≥ 28px
-- [ ] Tags/labels ≥ 24px
-- [ ] Line height 1.1-1.6
-- [ ] Contraste mínimo 4.5:1 (AA)
-
-### Densidade
-- [ ] Glossary: máx 6 termos
-- [ ] Anatomy: máx 4 componentes
-- [ ] Behavior: máx 4 linhas
-- [ ] Do/Dont: máx 3 itens/coluna
-- [ ] Wording: máx 2 erros
-- [ ] Contact: máx 3 links
-- [ ] Use Case: bullets (não parágrafos)
-
-### Layout
-- [ ] Dimensões: 1920x1080
-- [ ] Margem mínima: 100px
-- [ ] Cover/Contact: centralizados
-- [ ] Espaçamento consistente
-- [ ] Header bar em todos (exceto Cover/Contact)
+### Conteúdo
+- [ ] Todos os termos do glossário são domain-specific (não genéricos)
+- [ ] Os CDUs têm nomes reais do Figma (não "Caso de uso 1")
+- [ ] Os países/sites estão corretos e atualizados
+- [ ] Os comportamentos documentam estados reais (não hipotéticos)
+- [ ] As regras de Do/Dont são específicas ao componente (não "seja consistente")
+- [ ] O wording foi validado com copy/UX writing
+- [ ] Versão e data na capa estão corretos
 
 ### Visual
-- [ ] Mockups placeholders removidos
-- [ ] Cores seguem tokens Andes X
-- [ ] Fontes Inter carregadas
-- [ ] Sem texto cortado/overflow
+- [ ] Todos os placeholders de mockup foram substituídos por screenshots reais
+- [ ] Os mockups estão em estado default (a menos que o slide mostre outro estado)
+- [ ] Mockups exportados em 2x para resolução adequada
+- [ ] Nenhum texto cortado ou com overflow nos slides
+
+### Apresentação
+- [ ] Slides visualizados em 100% de zoom antes de apresentar
+- [ ] Testado em tela de projetor ou TV (mínimo 1440px de largura)
+- [ ] Links do slide de contato estão funcionando
+- [ ] Número de slides está coerente com o tempo disponível
 
 ---
 
-## 📊 Comparativo: Antes vs Depois
+## ⚠️ Limitações atuais do Guidely
 
-| Elemento | Antes (1440x900) | Depois (1920x1080) | Melhoria |
-|----------|------------------|---------------------|----------|
-| **Formato** | 16:10 (obsoleto) | 16:9 (moderno) | ✅ Compatível |
-| **Título Cover** | 72px | 120px | +67% |
-| **Títulos internos** | 40px | 72px | +80% |
-| **Corpo** | 16-20px | 28-36px | +75-80% |
-| **Tags** | 11px | 24px | +118% |
-| **Densidade** | Ilimitada | Limitada | ✅ Legível |
-| **Mockups** | Vazios | Removidos | ✅ Foco |
-| **Alinhamento** | Esquerda | Centralizado (Cover/Contact) | ✅ Impacto |
+| Limitação | Workaround |
+|---|---|
+| Mockups são placeholders | Inserir screenshots manualmente após geração |
+| Slides de flow/jornada não suportados | Criar manualmente no Figma como complement |
+| Animações/microinterações não documentadas | Adicionar link para protótipo no slide de contato |
+| Múltiplas variações do mesmo componente | Duplicar slides manualmente e editar |
 
 ---
 
-## 🚀 Implementação
+## 🔄 Como atualizar o guideline
 
-### Arquivos Modificados
+Quando o componente evoluir:
 
-1. **`plugin/src/templates.ts`**
-   - `SLIDE_WIDTH`: 1440 → 1920
-   - `SLIDE_HEIGHT`: 900 → 1080
-   - `PAD`: Aumentado proporcionalmente
-
-2. **`plugin/src/builder.ts`**
-   - Fontes aumentadas em TODOS os slides
-   - Cover/Contact centralizados
-   - Densidade limitada (slice)
-   - Mockups removidos
-
-### Como Testar
-
-```bash
-cd plugin
-npm run build
-
-# No Figma:
-# 1. Reload plugin
-# 2. Gere slides de teste
-# 3. Verifique dimensões (1920x1080)
-# 4. Teste em projetor/Zoom
-```
-
----
-
-## 📚 Referências
-
-- [Professional Slide Design Standards](https://www.nngroup.com/articles/presentation-design/)
-- [WCAG Contrast Guidelines](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html)
-- [Andes X Design Tokens](https://main-library.andesx.design/)
-- [Typography Best Practices for Slides](https://www.duarte.com/presentation-skills-resources/slide-design/)
-
----
-
-## 🤝 Contribuindo
-
-Ao adicionar novos tipos de slides:
-
-1. **Seguir tamanhos mínimos de fonte** (≥28px corpo, ≥72px títulos)
-2. **Limitar densidade** (máx 3-4 itens por seção)
-3. **Usar tokens Andes X** (não valores hardcoded)
-4. **Testar legibilidade** em projetor real
-5. **Atualizar esta documentação**
+1. Abra o Guidely novamente com o arquivo Figma atualizado
+2. Responda as perguntas com as mudanças
+3. Gere uma nova versão — o Guidely criará slides novos no canvas
+4. Atualize a versão na capa (ex: V1 → V2)
+5. Archive a versão anterior (mova para uma página separada no Figma)
 
 ---
 
 **Última atualização:** 2026-03-04
-**Versão:** 2.0 (1920x1080 upgrade)
+**Versão do Guidely:** 1.0
