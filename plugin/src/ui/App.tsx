@@ -2,11 +2,11 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react'
 
 // Extract quick reply options from message
 function extractOptions(text: string): { clean: string; options: string[] } {
-  const match = text.match(/<options>(\[.*?\])<\/options>/s)
+  const match = text.match(/<options>([\s\S]*?)<\/options>/)
   if (!match) return { clean: text.trim(), options: [] }
   try {
     const options = JSON.parse(match[1]) as string[]
-    const clean = text.replace(/<options>.*?<\/options>/s, '').trim()
+    const clean = text.replace(/<options>[\s\S]*?<\/options>/, '').trim()
     return { clean, options }
   } catch {
     return { clean: text.trim(), options: [] }
@@ -109,7 +109,8 @@ export default function App() {
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [accessCode, setAccessCode] = useState('')
-  const [anthropicOAuthStatus, setAnthropicOAuthStatus] = useState<'idle' | 'guide' | 'done'>('idle')
+  const [anthropicOAuthStatus, setAnthropicOAuthStatus] = useState<'idle' | 'waiting' | 'guide' | 'done' | 'error'>('idle')
+  const [anthropicOAuthError, setAnthropicOAuthError] = useState('')
   const [cmdCopied, setCmdCopied] = useState(false)
   const anthropicPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -190,8 +191,17 @@ export default function App() {
         if (msg.figmaToken && msg.anthropicKey) setStep('files')
         else if (msg.figmaToken || msg.anthropicKey) setStep('connect')
       }
-      if (msg.type === 'BUILD_COMPLETE') { setIsBuilding(false); setStep('output-figma') }
-      if (msg.type === 'BUILD_ERROR') { setIsBuilding(false); setBuildError(msg.message); setStep('preview') }
+      if (msg.type === 'BUILD_COMPLETE') {
+        if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
+        setIsBuilding(false)
+        setStep('output-figma')
+      }
+      if (msg.type === 'BUILD_ERROR') {
+        if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
+        setIsBuilding(false)
+        setBuildError(msg.message)
+        setStep('preview')
+      }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
@@ -306,6 +316,7 @@ export default function App() {
     const init: Message = { role: 'user', content: 'Analisou os arquivos Figma. Faça as perguntas necessárias para criar o guideline.' }
     setMessages([init])
     setIsStreaming(true)
+    setIsGenerating(false)
     setStreamingText('')
     let text = ''
     streamChat([init], context, anthropicKey, {
@@ -328,6 +339,7 @@ export default function App() {
           setStreamingText('')
         }
         setIsStreaming(false)
+        setIsGenerating(false)
       },
     })
   }, [anthropicKey])
@@ -340,6 +352,7 @@ export default function App() {
     setChatInput('')
     setQuickOptions([])
     setIsStreaming(true)
+    setIsGenerating(false)
     setStreamingText('')
     let assistantText = ''
     let guidelineReceived = false
@@ -383,21 +396,24 @@ export default function App() {
       setBuildError('Nenhum slide para criar. Tente gerar novamente.')
       return
     }
+    const slideCount = guideline.slides.length
+    const timeoutMs = Math.min(120000, Math.max(45000, slideCount * 5000))
+
     setBuildError('')
     setIsBuilding(true)
     parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline } }, '*')
 
-    // Safety timeout — if no response from plugin in 30s, show error
+    // Safety timeout — adaptive to slide count to reduce false timeouts on larger guidelines
     if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
     buildTimeoutRef.current = setTimeout(() => {
       setIsBuilding((current) => {
         if (current) {
-          setBuildError('Timeout: o plugin não respondeu. Verifique se a fonte Inter está instalada e tente novamente.')
+          setBuildError(`Timeout (${Math.round(timeoutMs / 1000)}s): o plugin não respondeu. Verifique se a fonte Inter está instalada e tente novamente.`)
           return false
         }
         return current
       })
-    }, 30000)
+    }, timeoutMs)
   }
 
   const handleExportDoc = () => {
@@ -422,6 +438,8 @@ export default function App() {
     setStep('files')
     setMessages([])
     setGuideline(null)
+    setIsStreaming(false)
+    setIsGenerating(false)
     setStreamingText('')
     setChatInput('')
     setFigmaContext('')
@@ -661,7 +679,7 @@ export default function App() {
             {analyzeError && <div className="error-card">{analyzeError}</div>}
 
             <button className="btn btn-primary" onClick={handleAnalyze}
-              disabled={(!refUrl.trim() && !destUrl.trim()) || step === 'analyzing'}>
+              disabled={!refUrl.trim() && !destUrl.trim()}>
               Analisar
             </button>
             <button className="btn-ghost btn" onClick={() => setStep('connect')}><ArrowLeft size={13} /> Voltar</button>

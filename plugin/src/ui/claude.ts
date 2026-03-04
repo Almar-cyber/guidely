@@ -1,20 +1,99 @@
 const BASE_URL = 'https://guidely-mu.vercel.app'
+const STREAM_TOTAL_TIMEOUT_MS = 180000
+const STREAM_IDLE_TIMEOUT_MS = 45000
+const STREAM_MAX_TOTAL_TIMEOUT_MS = 1200000
+const STREAM_MAX_IDLE_TIMEOUT_MS = 180000
+const STREAM_TIMEOUT_RETRY_LIMIT = 2
+const RETRY_CONTEXT_LIMITS = [70000, 50000, 32000]
 
 // Lightweight validation without pulling in zod — keeps bundle small and sandbox-compatible
 function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: false; error: string } {
-  if (!data || typeof data !== 'object') return { ok: false, error: 'Não é um objeto' }
-  const d = data as Record<string, unknown>
-  if (typeof d.title !== 'string') return { ok: false, error: 'Campo "title" ausente ou inválido' }
-  if (typeof d.team !== 'string') return { ok: false, error: 'Campo "team" ausente ou inválido' }
-  if (typeof d.version !== 'string') return { ok: false, error: 'Campo "version" ausente ou inválido' }
+  const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
+  const isStr = (v: unknown): v is string => typeof v === 'string'
+  const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+  const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
+  const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every(isStr)
+
+  if (!isObj(data)) return { ok: false, error: 'Não é um objeto' }
+  const d = data
+
+  if (!isStr(d.title)) return { ok: false, error: 'Campo "title" ausente ou inválido' }
+  if (!isStr(d.team)) return { ok: false, error: 'Campo "team" ausente ou inválido' }
+  if (!isStr(d.version)) return { ok: false, error: 'Campo "version" ausente ou inválido' }
   if (!Array.isArray(d.slides) || d.slides.length === 0) return { ok: false, error: 'Campo "slides" ausente ou vazio' }
+
   const validTypes = ['cover','objective','glossary','anatomy','use_case_map','use_case','behavior','do_dont','wording','contact']
+
   for (let i = 0; i < d.slides.length; i++) {
-    const s = d.slides[i] as Record<string, unknown>
-    if (!s || typeof s.type !== 'string' || !validTypes.includes(s.type)) {
-      return { ok: false, error: `Slide ${i + 1}: tipo "${s?.type}" inválido` }
+    const s = d.slides[i]
+    if (!isObj(s) || !isStr(s.type) || !validTypes.includes(s.type)) {
+      return { ok: false, error: `Slide ${i + 1}: tipo "${isObj(s) ? String(s.type) : 'desconhecido'}" inválido` }
+    }
+
+    switch (s.type) {
+      case 'cover':
+        if (!isStr(s.title) || !isStr(s.subtitle) || !isStr(s.team) || !isStr(s.version)) {
+          return { ok: false, error: `Slide ${i + 1}: cover inválido` }
+        }
+        break
+
+      case 'objective':
+        if (!isStr(s.body)) return { ok: false, error: `Slide ${i + 1}: objective sem body` }
+        break
+
+      case 'glossary':
+        if (!Array.isArray(s.terms) || !s.terms.every((t) => isObj(t) && isStr(t.term) && isStr(t.definition))) {
+          return { ok: false, error: `Slide ${i + 1}: glossary inválido` }
+        }
+        break
+
+      case 'anatomy':
+        if (!isStr(s.title) || !Array.isArray(s.components) || !s.components.every((c) => isObj(c) && isNum(c.index) && isStr(c.name) && isBool(c.required))) {
+          return { ok: false, error: `Slide ${i + 1}: anatomy inválido` }
+        }
+        break
+
+      case 'use_case_map':
+        if (!isStr(s.title) || !isStringArray(s.caseNames) || s.caseNames.length === 0) {
+          return { ok: false, error: `Slide ${i + 1}: use_case_map inválido` }
+        }
+        if (!Array.isArray(s.rows) || !s.rows.every((r) => isObj(r) && isStr(r.component) && isObj(r.cases))) {
+          return { ok: false, error: `Slide ${i + 1}: use_case_map rows inválidos` }
+        }
+        break
+
+      case 'use_case':
+        if (!isStr(s.title) || !isStr(s.body) || !isStringArray(s.components)) {
+          return { ok: false, error: `Slide ${i + 1}: use_case inválido` }
+        }
+        break
+
+      case 'behavior':
+        if (!isStr(s.title) || !Array.isArray(s.rows) || !s.rows.every((r) => isObj(r) && isStr(r.label) && isStr(r.value))) {
+          return { ok: false, error: `Slide ${i + 1}: behavior inválido` }
+        }
+        break
+
+      case 'do_dont':
+        if (!isStr(s.title) || !isStringArray(s.do) || !isStringArray(s.dont)) {
+          return { ok: false, error: `Slide ${i + 1}: do_dont inválido` }
+        }
+        break
+
+      case 'wording':
+        if (!isStr(s.title) || !Array.isArray(s.errors) || !s.errors.every((e) => isObj(e) && isStr(e.name) && isStr(e.objective) && Array.isArray(e.variants) && e.variants.every((v) => isObj(v) && isStr(v.country) && isStr(v.flag) && isStr(v.text)))) {
+          return { ok: false, error: `Slide ${i + 1}: wording inválido` }
+        }
+        break
+
+      case 'contact':
+        if (!isStr(s.channel) || !Array.isArray(s.links) || !s.links.every((l) => isObj(l) && isStr(l.label) && isStr(l.url))) {
+          return { ok: false, error: `Slide ${i + 1}: contact inválido` }
+        }
+        break
     }
   }
+
   return { ok: true, data }
 }
 
@@ -89,13 +168,53 @@ export async function readFigmaFiles(
     body: JSON.stringify({ token: figmaToken, referenceFileId, destinationFileId }),
   })
 
-  const data = await res.json() as { context?: string; error?: string }
+  const data = await res.json() as { context?: string; error?: string; truncated?: boolean }
 
   // Fix #8 — specific error messages
   if (res.status === 401) throw new Error('Token do Figma inválido ou sem permissão de leitura.')
   if (res.status === 403) throw new Error('Sem acesso ao arquivo. Verifique se o arquivo é público ou se o token tem permissão.')
   if (!res.ok || data.error) throw new Error(data.error ?? `Erro ao ler arquivo (${res.status})`)
-  return data.context ?? ''
+
+  const context = data.context ?? ''
+  if (!data.truncated) return context
+
+  return `${context}\n\n[Nota do sistema: o contexto dos arquivos foi truncado por tamanho. Gere o guideline completo com o conteúdo disponível e sinalize lacunas como \"A confirmar\" sem interromper a geração.]`
+}
+
+function estimateMessageChars(messages: Message[]): number {
+  return messages.reduce((sum, msg) => sum + msg.content.length, 0)
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function compactContextForRetry(context: string, maxChars: number): string {
+  if (context.length <= maxChars) return context
+
+  const headSize = Math.floor(maxChars * 0.72)
+  const tailSize = Math.floor(maxChars * 0.22)
+
+  return `${context.slice(0, headSize)}\n\n[Nota do sistema: contexto resumido automaticamente para garantir a conclusão da geração em documentação extensa.]\n\n${context.slice(-tailSize)}`
+}
+
+function computeStreamTimeouts(figmaContext: string, messages: Message[]): { idleMs: number; totalMs: number } {
+  const contextFactor = Math.ceil(figmaContext.length / 12000)
+  const messageChars = estimateMessageChars(messages)
+
+  const idleMs = clamp(
+    STREAM_IDLE_TIMEOUT_MS + contextFactor * 12000 + Math.floor(messageChars / 220),
+    STREAM_IDLE_TIMEOUT_MS,
+    STREAM_MAX_IDLE_TIMEOUT_MS
+  )
+
+  const totalMs = clamp(
+    STREAM_TOTAL_TIMEOUT_MS + contextFactor * 40000 + Math.floor(messageChars / 55),
+    STREAM_TOTAL_TIMEOUT_MS,
+    STREAM_MAX_TOTAL_TIMEOUT_MS
+  )
+
+  return { idleMs, totalMs }
 }
 
 // Stream chat — fix #1 (null body) + #5 (silent JSON) + specific error messages
@@ -103,21 +222,44 @@ export async function streamChat(
   messages: Message[],
   figmaContext: string,
   anthropicKey: string,
-  cb: StreamCallbacks
+  cb: StreamCallbacks,
+  attempt = 0
 ): Promise<void> {
+  const contextLimit = RETRY_CONTEXT_LIMITS[Math.min(attempt, RETRY_CONTEXT_LIMITS.length - 1)]
+  const effectiveContext = compactContextForRetry(figmaContext, contextLimit)
+  const { idleMs, totalMs } = computeStreamTimeouts(effectiveContext, messages)
+  const controller = new AbortController()
+  let totalTimeout: ReturnType<typeof setTimeout> | null = null
+  let idleTimeout: ReturnType<typeof setTimeout> | null = null
+
+  const clearWatchdogs = () => {
+    if (totalTimeout) clearTimeout(totalTimeout)
+    if (idleTimeout) clearTimeout(idleTimeout)
+  }
+
+  const refreshIdleWatchdog = () => {
+    if (idleTimeout) clearTimeout(idleTimeout)
+    idleTimeout = setTimeout(() => controller.abort(), idleMs)
+  }
+
+  totalTimeout = setTimeout(() => controller.abort(), totalMs)
+
   let res: Response
   try {
     res = await fetch(`${BASE_URL}/api/chat`, {
       method: 'POST',
       headers: authHeaders(anthropicKey),
-      body: JSON.stringify({ messages, figmaContext }),
+      body: JSON.stringify({ messages, figmaContext: effectiveContext }),
+      signal: controller.signal,
     })
   } catch {
+    clearWatchdogs()
     cb.onError('Sem conexão com o servidor. Verifique sua internet e tente novamente.')
     return
   }
 
   if (!res.ok) {
+    clearWatchdogs()
     const err = await res.json().catch(() => ({})) as { error?: string }
     if (res.status === 401) {
       cb.onError('Chave da API Anthropic inválida. Verifique nas configurações do Guidely.')
@@ -129,33 +271,55 @@ export async function streamChat(
 
   // Fix #1 — guard against null body
   if (!res.body) {
+    clearWatchdogs()
     cb.onError('Resposta do servidor inválida. Tente novamente.')
     return
   }
 
   const reader = res.body.getReader()
+  refreshIdleWatchdog()
   const decoder = new TextDecoder()
   let buffer = ''
   let toolInputAccum = ''
+  let toolInputFromStart = false
   let inToolUse = false
   let hasReceivedData = false
   let guidelineEmitted = false
   let fullText = ''
 
+  function parseJsonFromText(text: string): unknown | null {
+    const candidates: string[] = []
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
+    if (fenced?.[1]) candidates.push(fenced[1].trim())
+
+    const firstBrace = text.indexOf('{')
+    const lastBrace = text.lastIndexOf('}')
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      candidates.push(text.slice(firstBrace, lastBrace + 1).trim())
+    }
+
+    for (const candidate of candidates) {
+      try {
+        return JSON.parse(candidate)
+      } catch {
+        // try next candidate
+      }
+    }
+
+    return null
+  }
+
   // If Claude responded with text containing JSON instead of calling the tool, try to extract it
   function tryFallbackAndDone() {
     if (!guidelineEmitted && fullText.length > 200) {
-      const jsonMatch = fullText.match(/```(?:json)?\s*([\s\S]*?)```/)
-      if (jsonMatch) {
-        try {
-          const raw = JSON.parse(jsonMatch[1])
-          const result = validateGuideline(raw)
-          if (result.ok) {
-            guidelineEmitted = true
-            cb.onGuideline(result.data)
-            return
-          }
-        } catch { /* not valid JSON — ignore */ }
+      const raw = parseJsonFromText(fullText)
+      if (raw) {
+        const result = validateGuideline(raw)
+        if (result.ok) {
+          guidelineEmitted = true
+          cb.onGuideline(result.data)
+          return
+        }
       }
     }
     cb.onDone()
@@ -167,6 +331,7 @@ export async function streamChat(
       if (done) break
 
       hasReceivedData = true
+      refreshIdleWatchdog()
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
@@ -174,7 +339,11 @@ export async function streamChat(
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue
         const raw = line.slice(6).trim()
-        if (raw === '[DONE]') { tryFallbackAndDone(); return }
+        if (raw === '[DONE]') {
+          clearWatchdogs()
+          tryFallbackAndDone()
+          return
+        }
 
         // Fix #5 — log parse failures instead of silently dropping
         let event: Record<string, unknown>
@@ -191,6 +360,15 @@ export async function streamChat(
           if (block?.type === 'tool_use' && block?.name === 'generate_guideline') {
             inToolUse = true
             toolInputAccum = ''
+            toolInputFromStart = false
+            const immediateInput = block.input
+            if (immediateInput && typeof immediateInput === 'object') {
+              toolInputAccum = JSON.stringify(immediateInput)
+              toolInputFromStart = true
+            } else if (typeof immediateInput === 'string') {
+              toolInputAccum = immediateInput
+              toolInputFromStart = true
+            }
             cb.onGenerating?.()
           }
         }
@@ -198,7 +376,9 @@ export async function streamChat(
         if (type === 'content_block_delta') {
           const delta = event.delta as Record<string, unknown>
           if (delta?.type === 'text_delta') { const t = delta.text as string; fullText += t; cb.onText(t) }
-          if (delta?.type === 'input_json_delta') toolInputAccum += (delta.partial_json as string) ?? ''
+          if (delta?.type === 'input_json_delta' && !toolInputFromStart) {
+            toolInputAccum += (delta.partial_json as string) ?? ''
+          }
         }
 
         if (type === 'content_block_stop' && inToolUse) {
@@ -210,22 +390,39 @@ export async function streamChat(
               guidelineEmitted = true
               cb.onGuideline(result.data)
             } else {
+              clearWatchdogs()
               cb.onError(`Guideline com campos inválidos: ${result.error}. Tente escrever "gerar" novamente.`)
+              return
             }
           } catch (e) {
             const errMsg = String(e).slice(0, 120)
             const jsonLen = toolInputAccum.length
+            clearWatchdogs()
             cb.onError(`Erro ao processar guideline (${errMsg}) — JSON length: ${jsonLen}. Tente escrever "gerar" novamente.`)
+            return
           }
         }
 
         if (event.error) {
+          clearWatchdogs()
           cb.onError((event.error as Record<string, string>).message ?? 'Erro desconhecido da API.')
           return
         }
       }
     }
   } catch {
+    clearWatchdogs()
+    if (controller.signal.aborted) {
+      const canRetry = !hasReceivedData && attempt < STREAM_TIMEOUT_RETRY_LIMIT
+      if (canRetry) {
+        await streamChat(messages, figmaContext, anthropicKey, cb, attempt + 1)
+        return
+      }
+
+      const attemptInfo = attempt > 0 ? ` após ${attempt + 1} tentativas automáticas` : ''
+      cb.onError(`Tempo limite da geração (${Math.round(totalMs / 1000)}s)${attemptInfo}. Clique em gerar novamente para continuar.`)
+      return
+    }
     if (!hasReceivedData) {
       cb.onError('Conexão interrompida antes de receber resposta. Tente novamente.')
     } else {
@@ -234,5 +431,6 @@ export async function streamChat(
     return
   }
 
+  clearWatchdogs()
   tryFallbackAndDone()
 }

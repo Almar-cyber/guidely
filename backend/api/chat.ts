@@ -10,6 +10,96 @@ function corsHeaders(): Record<string, string> {
   }
 }
 
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+    },
+  })
+}
+
+function extractTextFromMessageContent(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+
+  return content
+    .map((block) => {
+      if (!block || typeof block !== 'object') return ''
+      const maybeText = (block as { text?: unknown }).text
+      return typeof maybeText === 'string' ? maybeText : ''
+    })
+    .join(' ')
+    .trim()
+}
+
+function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
+  const lastUser = [...messages]
+    .reverse()
+    .find((msg) => msg.role === 'user')
+
+  if (!lastUser) return false
+
+  const text = extractTextFromMessageContent((lastUser as { content?: unknown }).content).toLowerCase()
+  if (!text) return false
+
+  const explicitNegative = /\b(?:não|nao|not)\b[^.!?\n]{0,24}\b(?:gerar|gere|generate|finalizar|concluir|criar)\b/i
+  if (explicitNegative.test(text)) return false
+
+  return /(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)
+}
+
+const MAX_CONTEXT_CHARS = 70000
+const MAX_MESSAGES = 16
+const MAX_MESSAGE_TEXT_CHARS = 5000
+
+function truncateText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars - 1)}…`
+}
+
+function compactFigmaContext(context: string): string {
+  if (context.length <= MAX_CONTEXT_CHARS) return context
+
+  const headSize = Math.floor(MAX_CONTEXT_CHARS * 0.78)
+  const tailSize = Math.floor(MAX_CONTEXT_CHARS * 0.16)
+  const head = context.slice(0, headSize)
+  const tail = context.slice(-tailSize)
+
+  return `${head}\n\n[... contexto resumido automaticamente para evitar erro por payload grande ...]\n\n${tail}`
+}
+
+function compactMessageContent(content: Anthropic.MessageParam['content']): Anthropic.MessageParam['content'] {
+  if (typeof content === 'string') {
+    return truncateText(content, MAX_MESSAGE_TEXT_CHARS)
+  }
+
+  if (!Array.isArray(content)) return content
+
+  return content.map((block) => {
+    if (block && typeof block === 'object' && 'text' in block && typeof block.text === 'string') {
+      return {
+        ...block,
+        text: truncateText(block.text, MAX_MESSAGE_TEXT_CHARS),
+      }
+    }
+
+    return block
+  })
+}
+
+function compactMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const sliced = messages.length > MAX_MESSAGES
+    ? [messages[0], ...messages.slice(-(MAX_MESSAGES - 1))]
+    : messages
+
+  return sliced.map((msg) => ({
+    ...msg,
+    content: compactMessageContent(msg.content),
+  }))
+}
+
 function buildSystemPrompt(figmaContext: string): string {
   return `You are a UX Documentation Specialist at Mercado Pago, expert in creating complete guidelines for leadership and stakeholders following the Andes X design system.
 
@@ -262,69 +352,85 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(null, { headers: corsHeaders() })
   }
 
-  // Token sent by plugin — can be:
-  // 1. OAuth access token from claude.ai (starts with sk-ant-oat or similar)
-  // 2. Team access code validated against env var
-  const userToken = req.headers.get('X-Anthropic-Key') ?? ''
-  const accessCode = process.env.ACCESS_CODE
-  const backendKey = process.env.ANTHROPIC_API_KEY
+  try {
+    // Token sent by plugin — can be:
+    // 1. OAuth access token from claude.ai (starts with sk-ant-oat or similar)
+    // 2. Team access code validated against env var
+    const userToken = req.headers.get('X-Anthropic-Key') ?? ''
+    const accessCode = process.env.ACCESS_CODE
+    const backendKey = process.env.ANTHROPIC_API_KEY
 
-  // If user sent a valid Anthropic key directly, use it; otherwise use backend key + validate access code
-  const isUserKey = userToken.startsWith('sk-ant-') && userToken.length >= 40
-  const apiKey = isUserKey ? userToken : backendKey
+    // If user sent a valid Anthropic key directly, use it; otherwise use backend key + validate access code
+    const isUserKey = userToken.startsWith('sk-ant-') && userToken.length >= 40
+    const apiKey = isUserKey ? userToken : backendKey
 
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Backend não configurado. Fale com o admin.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+    if (!apiKey) {
+      return jsonResponse({ error: 'Backend não configurado. Fale com o admin.' }, 500)
+    }
 
-  if (!isUserKey && accessCode && userToken !== accessCode) {
-    return new Response(JSON.stringify({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+    if (!isUserKey && accessCode && userToken !== accessCode) {
+      return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401)
+    }
 
-  const { messages, figmaContext = '' } = await req.json() as {
-    messages: Anthropic.MessageParam[]
-    figmaContext?: string
-  }
+    const { messages, figmaContext = '' } = await req.json() as {
+      messages: Anthropic.MessageParam[]
+      figmaContext?: string
+    }
 
-  const client = new Anthropic({ apiKey })
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return jsonResponse({ error: 'Payload inválido: messages é obrigatório.' }, 400)
+    }
 
-  const stream = await client.messages.stream({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 8096,
-    system: buildSystemPrompt(figmaContext),
-    tools: [GENERATE_GUIDELINE_TOOL],
-    messages,
-  })
+    const compactedMessages = compactMessages(messages)
+    const compactedFigmaContext = compactFigmaContext(figmaContext)
+    const forceGuidelineTool = shouldForceGuidelineTool(compactedMessages)
+    const client = new Anthropic({ apiKey })
 
-  const encoder = new TextEncoder()
+    let stream: Awaited<ReturnType<typeof client.messages.stream>>
+    try {
+      stream = await client.messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8096,
+        system: buildSystemPrompt(compactedFigmaContext),
+        tools: [GENERATE_GUIDELINE_TOOL],
+        tool_choice: forceGuidelineTool
+          ? { type: 'tool', name: 'generate_guideline' }
+          : { type: 'auto' },
+        messages: compactedMessages,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao iniciar stream com Claude.'
+      return jsonResponse({ error: message }, 502)
+    }
 
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const event of stream) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+    const encoder = new TextEncoder()
+
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+          }
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+          controller.close()
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Stream error'
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`))
+          controller.close()
         }
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-        controller.close()
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Stream error'
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`))
-        controller.close()
-      }
-    },
-  })
+      },
+    })
 
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      ...corsHeaders(),
-    },
-  })
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        ...corsHeaders(),
+      },
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro inesperado no endpoint de chat.'
+    return jsonResponse({ error: message }, 500)
+  }
 }

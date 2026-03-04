@@ -9,6 +9,12 @@ function corsHeaders(): Record<string, string> {
 }
 
 const CONTENT_PAGE_SKIP = /^(↓|←|→|↑|--|==|MASTER|COMPONENT|LIBRARY|\s*$)/i
+const MAX_PAGES = 6
+const MAX_TOP_FRAMES_PER_PAGE = 12
+const MAX_LINES_PER_PAGE = 140
+const MAX_PAGE_CHARS = 14000
+const MAX_LINE_CHARS = 260
+const MAX_CONTEXT_CHARS = 90000
 
 interface FigmaNode {
   id: string
@@ -18,12 +24,33 @@ interface FigmaNode {
   children?: FigmaNode[]
 }
 
+function normalizeExtractedText(text: string): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= MAX_LINE_CHARS) return clean
+  return `${clean.slice(0, MAX_LINE_CHARS - 1)}…`
+}
+
+function capContext(context: string): { context: string; truncated: boolean } {
+  if (context.length <= MAX_CONTEXT_CHARS) return { context, truncated: false }
+
+  const headSize = Math.floor(MAX_CONTEXT_CHARS * 0.75)
+  const tailSize = Math.floor(MAX_CONTEXT_CHARS * 0.2)
+  const head = context.slice(0, headSize)
+  const tail = context.slice(-tailSize)
+  const marker = '\n\n[... contexto truncado para manter estabilidade da geração ...]\n\n'
+
+  return {
+    context: `${head}${marker}${tail}`,
+    truncated: true,
+  }
+}
+
 function extractText(node: FigmaNode, depth = 0): string[] {
   const results: string[] = []
   const skip = ['VECTOR', 'RECTANGLE', 'ELLIPSE', 'LINE', 'POLYGON', 'STAR', 'BOOLEAN_OPERATION', 'REGULAR_POLYGON']
 
   if (node.type === 'TEXT' && node.characters?.trim()) {
-    const clean = node.characters.replace(/\n+/g, ' ').trim()
+    const clean = normalizeExtractedText(node.characters)
     if (clean.length > 2 && !clean.match(/^\d+$/) && !clean.match(/^[•\-–—]+$/)) {
       results.push(clean)
     }
@@ -69,8 +96,8 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
   )
 
   // 3. For each content page, get nodes at depth 8 to extract text
-  for (const page of contentPages.slice(0, 6)) {
-    const topFrames = (page.children ?? []).slice(0, 12)
+  for (const page of contentPages.slice(0, MAX_PAGES)) {
+    const topFrames = (page.children ?? []).slice(0, MAX_TOP_FRAMES_PER_PAGE)
     if (topFrames.length === 0) continue
 
     const ids = topFrames.map((f) => f.id).join(',')
@@ -97,9 +124,19 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
         t.length > 3
     )
 
-    if (unique.length > 0) {
+    const limited: string[] = []
+    let pageChars = 0
+    for (const line of unique) {
+      if (limited.length >= MAX_LINES_PER_PAGE) break
+      const nextSize = line.length + 1
+      if (pageChars + nextSize > MAX_PAGE_CHARS) break
+      limited.push(line)
+      pageChars += nextSize
+    }
+
+    if (limited.length > 0) {
       sections.push(`## Página: ${page.name}\n`)
-      sections.push(unique.slice(0, 120).join('\n'))
+      sections.push(limited.join('\n'))
       sections.push('')
     }
   }
@@ -135,7 +172,7 @@ export default async function handler(req: Request): Promise<Response> {
         : Promise.resolve(''),
     ])
 
-    const context = [
+    const rawContext = [
       '=== ARQUIVO DE REFERÊNCIA (design do componente) ===',
       refContent,
       destContent
@@ -145,7 +182,9 @@ export default async function handler(req: Request): Promise<Response> {
       .filter(Boolean)
       .join('\n\n')
 
-    return new Response(JSON.stringify({ context }), {
+    const { context, truncated } = capContext(rawContext)
+
+    return new Response(JSON.stringify({ context, truncated }), {
       headers: {
         'Content-Type': 'application/json',
         ...corsHeaders(),
