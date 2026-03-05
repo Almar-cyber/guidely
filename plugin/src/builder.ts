@@ -11,6 +11,9 @@ import type {
   DoDontSlide,
   WordingSlide,
   ContactSlide,
+  BeforeAfterSlide,
+  MicrointeractionSlide,
+  IndexSlide,
 } from './types'
 import {
   SLIDE_WIDTH,
@@ -1041,6 +1044,247 @@ function buildContactSlide(
 }
 
 // ─────────────────────────────────────────────
+// Before / After slide
+// ─────────────────────────────────────────────
+
+function buildBeforeAfterSlide(
+  slide: BeforeAfterSlide,
+  guidelineTitle: string,
+  index: number,
+  slideNum: number
+): FrameNode {
+  const frame = makeFrame('Antes e depois')
+  frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
+  frame.fills = solid(COLORS.bg)
+  frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+
+  const bar = makeHeaderBar(guidelineTitle, slideNum)
+  frame.appendChild(bar)
+
+  const content = makeFrame('Content')
+  setAutoLayout(content, 'VERTICAL', PAD.gap, PAD.slideTop, PAD.slideBot, PAD.slideH, PAD.slideH)
+  content.fills = []
+  content.resize(SLIDE_WIDTH, 1)
+  content.primaryAxisSizingMode = 'AUTO'
+  content.counterAxisSizingMode = 'FIXED'
+
+  const title = makeText(slide.title, 40, FONTS.bold, COLORS.textPrimary)
+  content.appendChild(title)
+  content.appendChild(makeDivider())
+
+  // Two columns: Antes / Depois
+  const cols = makeFrame('Columns')
+  cols.layoutMode = 'HORIZONTAL'
+  cols.primaryAxisSizingMode = 'FIXED'
+  cols.counterAxisSizingMode = 'AUTO'
+  cols.itemSpacing = PAD.gap
+  cols.fills = []
+  cols.resize(SLIDE_WIDTH - PAD.slideH * 2, 1)
+  cols.layoutSizingHorizontal = 'FILL' as any
+
+  const buildCol = (data: { label: string; points: string[] }, isBefore: boolean) => {
+    const col = makeFrame(data.label)
+    setAutoLayout(col, 'VERTICAL', PAD.gapSmall, PAD.cardV, PAD.cardV, PAD.cardH, PAD.cardH)
+    col.fills = solid(isBefore ? COLORS.bgSection2 : COLORS.accentLight)
+    col.cornerRadius = 12
+    col.layoutGrow = 1
+
+    const colLabel = makeText(data.label, 13, FONTS.semiBold,
+      isBefore ? COLORS.textSecondary : COLORS.accent)
+    colLabel.letterSpacing = { value: 0.5, unit: 'PIXELS' }
+    col.appendChild(colLabel)
+
+    data.points.forEach((pt) => {
+      const row = makeFrame('point')
+      setAutoLayout(row, 'HORIZONTAL', 8, 0, 0, 0, 0)
+      row.fills = []
+      row.layoutSizingHorizontal = 'FILL' as any
+
+      const bullet = makeText(isBefore ? '–' : '✓', 14, FONTS.bold,
+        isBefore ? COLORS.textSecondary : COLORS.accent)
+      row.appendChild(bullet)
+
+      const txt = makeText(pt, 16, FONTS.regular, COLORS.textPrimary)
+      txt.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+      txt.layoutGrow = 1
+      row.appendChild(txt)
+
+      col.appendChild(row)
+    })
+    return col
+  }
+
+  cols.appendChild(buildCol(slide.before, true))
+  cols.appendChild(buildCol(slide.after, false))
+  content.appendChild(cols)
+
+  if (slide.imageNote) {
+    const note = makeText(`📸 ${slide.imageNote}`, 12, FONTS.regular, COLORS.textSecondary)
+    content.appendChild(note)
+  }
+
+  frame.appendChild(content)
+  return frame
+}
+
+// ─────────────────────────────────────────────
+// Microinteraction slide
+// ─────────────────────────────────────────────
+
+function buildMicrointeractionSlide(
+  slide: MicrointeractionSlide,
+  guidelineTitle: string,
+  index: number,
+  slideNum: number
+): FrameNode {
+  const frame = makeFrame(`Microinteração: ${slide.title}`)
+  frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
+  frame.fills = solid(COLORS.bg)
+  frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+
+  const bar = makeHeaderBar(guidelineTitle, slideNum)
+  frame.appendChild(bar)
+
+  const content = makeFrame('Content')
+  setAutoLayout(content, 'VERTICAL', PAD.gap, PAD.slideTop, PAD.slideBot, PAD.slideH, PAD.slideH)
+  content.fills = []
+  content.resize(SLIDE_WIDTH - 320, 1)
+  content.primaryAxisSizingMode = 'AUTO'
+  content.counterAxisSizingMode = 'FIXED'
+
+  const sectionLabel = makeText('4 · Microinterações', 12, FONTS.semiBold, COLORS.accent)
+  sectionLabel.letterSpacing = { value: 1, unit: 'PIXELS' }
+  content.appendChild(sectionLabel)
+
+  const title = makeText(slide.title, 40, FONTS.bold, COLORS.textPrimary)
+  content.appendChild(title)
+
+  if (slide.description) {
+    const desc = makeText(slide.description, 16, FONTS.regular, COLORS.textSecondary)
+    desc.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
+    desc.layoutSizingHorizontal = 'FILL' as any
+    content.appendChild(desc)
+  }
+
+  content.appendChild(makeDivider())
+
+  slide.behaviors.forEach((b) => {
+    const card = makeFrame(`behavior-${b.name}`)
+    setAutoLayout(card, 'VERTICAL', PAD.gapSmall, PAD.cardV, PAD.cardV, PAD.cardH, PAD.cardH)
+    card.fills = solid(COLORS.bgSection)
+    card.cornerRadius = 8
+    card.layoutSizingHorizontal = 'FILL' as any
+
+    const bName = makeText(b.name, 15, FONTS.semiBold, COLORS.textPrimary)
+    card.appendChild(bName)
+
+    if (b.trigger) {
+      const trigger = makeText(`Quando: ${b.trigger}`, 13, FONTS.regular, COLORS.textSecondary)
+      card.appendChild(trigger)
+    }
+
+    const spec = makeText(b.spec, 13, FONTS.regular, COLORS.textSecondary)
+    spec.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+    spec.layoutSizingHorizontal = 'FILL' as any
+    card.appendChild(spec)
+
+    content.appendChild(card)
+  })
+
+  // Mockup placeholder
+  const mockup = makeFrame('Mockup')
+  mockup.resize(260, 480)
+  mockup.cornerRadius = 24
+  mockup.fills = solid(COLORS.bgSection)
+  mockup.strokes = solid(COLORS.border)
+  mockup.strokeWeight = 1
+  const mockLabel = makeText(slide.imageNote ?? 'Inserir vídeo\nou protótipo', 13, FONTS.regular, COLORS.textSecondary)
+  mockLabel.textAlignHorizontal = 'CENTER'
+  mockLabel.x = 82
+  mockLabel.y = (480 - 50) / 2
+  mockup.appendChild(mockLabel)
+  mockup.x = SLIDE_WIDTH - PAD.slideH - 260
+  mockup.y = 120
+
+  frame.appendChild(content)
+  frame.appendChild(mockup)
+  return frame
+}
+
+// ─────────────────────────────────────────────
+// Index slide
+// ─────────────────────────────────────────────
+
+function buildIndexSlide(
+  slide: IndexSlide,
+  guidelineTitle: string,
+  index: number
+): FrameNode {
+  const frame = makeFrame('Índice')
+  frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
+  frame.fills = solid(COLORS.bgDark)
+  frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+
+  const bar = makeHeaderBar(guidelineTitle)
+  frame.appendChild(bar)
+
+  const content = makeFrame('Content')
+  setAutoLayout(content, 'VERTICAL', PAD.gapLarge, PAD.slideTop, PAD.slideBot, PAD.slideH, PAD.slideH)
+  content.fills = []
+  content.resize(SLIDE_WIDTH, 1)
+  content.primaryAxisSizingMode = 'AUTO'
+  content.counterAxisSizingMode = 'FIXED'
+
+  const title = makeText('Índice', 48, FONTS.bold, COLORS.textLight)
+  content.appendChild(title)
+
+  // Sections grid
+  const grid = makeFrame('Grid')
+  grid.layoutMode = 'HORIZONTAL'
+  grid.primaryAxisSizingMode = 'FIXED'
+  grid.counterAxisSizingMode = 'AUTO'
+  grid.itemSpacing = PAD.gap * 2
+  grid.fills = []
+  grid.resize(SLIDE_WIDTH - PAD.slideH * 2, 1)
+  grid.layoutSizingHorizontal = 'FILL' as any
+
+  const col1 = makeFrame('Col1')
+  setAutoLayout(col1, 'VERTICAL', PAD.gap, 0, 0, 0, 0)
+  col1.fills = []
+  col1.layoutGrow = 1
+
+  const col2 = makeFrame('Col2')
+  setAutoLayout(col2, 'VERTICAL', PAD.gap, 0, 0, 0, 0)
+  col2.fills = []
+  col2.layoutGrow = 1
+
+  const half = Math.ceil(slide.sections.length / 2)
+
+  slide.sections.forEach((sec, i) => {
+    const secFrame = makeFrame(`section-${sec.number}`)
+    setAutoLayout(secFrame, 'VERTICAL', PAD.gapSmall, 0, 0, 0, 0)
+    secFrame.fills = []
+
+    const secTitle = makeText(`${sec.number}  ${sec.title}`, 20, FONTS.semiBold, COLORS.textLight)
+    secFrame.appendChild(secTitle)
+
+    sec.items.forEach((item) => {
+      const itemText = makeText(`    ${item}`, 14, FONTS.regular, { r: 0.55, g: 0.55, b: 0.65 })
+      secFrame.appendChild(itemText)
+    })
+
+    if (i < half) col1.appendChild(secFrame)
+    else col2.appendChild(secFrame)
+  })
+
+  grid.appendChild(col1)
+  grid.appendChild(col2)
+  content.appendChild(grid)
+  frame.appendChild(content)
+  return frame
+}
+
+// ─────────────────────────────────────────────
 // Main entry
 // ─────────────────────────────────────────────
 
@@ -1140,6 +1384,15 @@ export async function buildGuideline(data: GuidelineData, options?: BuildGuideli
           break
         case 'contact':
           frame = buildContactSlide(slide, data.title, i, slideNum++)
+          break
+        case 'before_after':
+          frame = buildBeforeAfterSlide(slide as BeforeAfterSlide, data.title, i, slideNum++)
+          break
+        case 'microinteraction':
+          frame = buildMicrointeractionSlide(slide as MicrointeractionSlide, data.title, i, slideNum++)
+          break
+        case 'index':
+          frame = buildIndexSlide(slide as IndexSlide, data.title, i)
           break
         default:
           skipped.push(`Slide ${i + 1}: tipo "${(slide as { type: string }).type}"`)

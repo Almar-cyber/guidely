@@ -38,7 +38,7 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
 
   if (!Array.isArray(d.slides) || d.slides.length === 0) return { ok: false, error: 'Campo "slides" ausente ou vazio' }
 
-  const validTypes = ['cover','objective','glossary','anatomy','use_case_map','use_case','behavior','do_dont','wording','contact']
+  const validTypes = ['cover','objective','glossary','anatomy','use_case_map','use_case','behavior','do_dont','wording','contact','before_after','microinteraction','index']
 
   for (let i = 0; i < d.slides.length; i++) {
     const s = d.slides[i]

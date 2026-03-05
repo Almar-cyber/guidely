@@ -1,6 +1,7 @@
 import type {
   GuidelineData, Slide, CoverSlide, ObjectiveSlide, GlossarySlide, AnatomySlide,
   UseCaseMapSlide, UseCaseSlide, BehaviorSlide, DoDontSlide, WordingSlide, ContactSlide,
+  BeforeAfterSlide, MicrointeractionSlide, IndexSlide,
 } from './types'
 
 function renderCover(s: CoverSlide) {
@@ -78,6 +79,30 @@ function renderContact(s: ContactSlide) {
   return `## Contato\n\n**Slack:** \`${s.channel}\`\n\n${links}`
 }
 
+function renderBeforeAfter(s: BeforeAfterSlide) {
+  const before = s.before.points.map((p) => `- ~~${p}~~`).join('\n')
+  const after = s.after.points.map((p) => `- ✅ ${p}`).join('\n')
+  const imgNote = s.imageNote ? `\n\n> 📸 _${s.imageNote}_` : ''
+  return `## ${s.title}\n\n**${s.before.label}**\n${before}\n\n**${s.after.label}**\n${after}${imgNote}`
+}
+
+function renderMicrointeraction(s: MicrointeractionSlide) {
+  const behaviors = s.behaviors.map((b) => {
+    const trigger = b.trigger ? `\n  - **Quando:** ${b.trigger}` : ''
+    return `### ${b.name}\n- **Spec:** ${b.spec}${trigger}`
+  }).join('\n\n')
+  const imgNote = s.imageNote ? `\n\n> 📸 _${s.imageNote}_` : ''
+  return `## ${s.title}\n\n${s.description ? s.description + '\n\n' : ''}${behaviors}${imgNote}`
+}
+
+function renderIndex(s: IndexSlide) {
+  const sections = s.sections.map((sec) => {
+    const items = sec.items.map((i) => `  - ${i}`).join('\n')
+    return `**${sec.number}. ${sec.title}**\n${items}`
+  }).join('\n\n')
+  return `## Índice\n\n${sections}`
+}
+
 function renderSlide(slide: Slide): string {
   switch (slide.type) {
     case 'cover': return renderCover(slide as CoverSlide)
@@ -90,6 +115,9 @@ function renderSlide(slide: Slide): string {
     case 'do_dont': return renderDoDont(slide as DoDontSlide)
     case 'wording': return renderWording(slide as WordingSlide)
     case 'contact': return renderContact(slide as ContactSlide)
+    case 'before_after': return renderBeforeAfter(slide as BeforeAfterSlide)
+    case 'microinteraction': return renderMicrointeraction(slide as MicrointeractionSlide)
+    case 'index': return renderIndex(slide as IndexSlide)
   }
 }
 

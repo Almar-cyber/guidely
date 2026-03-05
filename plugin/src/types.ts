@@ -66,10 +66,42 @@ export interface ContactSlide {
   links: { label: string; url: string }[]
 }
 
+// ─── Novos tipos ──────────────────────────────────────────────
+
+export interface BeforeAfterSlide {
+  type: 'before_after'
+  title: string
+  before: { label: string; points: string[] }
+  after: { label: string; points: string[] }
+  imageNote?: string
+}
+
+export interface MicrointeractionSlide {
+  type: 'microinteraction'
+  title: string
+  description?: string
+  behaviors: {
+    name: string           // ex: "Cursor piscando"
+    spec: string           // ex: "Alternância visível/invisível, duração nativa do sistema"
+    trigger?: string       // ex: "Ao focar o Amount Field"
+  }[]
+  imageNote?: string
+}
+
+export interface IndexSlide {
+  type: 'index'
+  sections: {
+    number: number
+    title: string
+    items: string[]        // sub-itens (ex: "Visão geral →", "Anatomia →")
+  }[]
+}
+
 export type Slide =
   | CoverSlide | ObjectiveSlide | GlossarySlide | AnatomySlide
   | UseCaseMapSlide | UseCaseSlide | BehaviorSlide | DoDontSlide
   | WordingSlide | ContactSlide
+  | BeforeAfterSlide | MicrointeractionSlide | IndexSlide
 
 export interface GuidelineData {
   title: string

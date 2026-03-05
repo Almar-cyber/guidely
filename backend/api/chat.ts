@@ -232,6 +232,30 @@ Sempre incluir todas as seções relevantes, nessa ordem:
   - Documentação do design system (Andes X)
   - Banco de logos/assets relevantes
 
+### 11. before_after (quando há mudança de versão)
+- Usar quando o componente tem uma versão anterior conhecida (ex: Andes Legacy → Andes X)
+- before: { label: "Antes (versão anterior)", points: ["item 1", "item 2"] }
+- after: { label: "Depois (nova versão)", points: ["item 1", "item 2"] }
+- Máximo 4 points por coluna
+- imageNote: "Screenshot lado a lado mostrando a diferença visual"
+
+### 12. microinteraction (quando há animações documentadas)
+- Usar quando o Figma documenta comportamentos de animação (cursor, transições, etc.)
+- behaviors: array de { name, spec, trigger }
+  - name: "Cursor piscando"
+  - spec: "Alternância visível/invisível em loop. Duração: nativa do sistema."
+  - trigger: "Ao focar o Amount Field"
+- imageNote: "Inserir vídeo ou GIF do comportamento"
+
+### 13. index (opcional, para guidelines com mais de 8 slides)
+- Posicionar logo após o cover
+- sections: cada seção principal do guideline com seus sub-itens
+- Exemplo:
+  ```
+  { number: 1, title: "Estrutura base", items: ["Anatomia →", "Specs →"] }
+  { number: 2, title: "Casos de uso", items: ["Mapa de CDUs →", "Pix →", "Presets →"] }
+  ```
+
 ## Regras de qualidade de conteúdo
 
 1. **Extrair do Figma**: Use APENAS conteúdo real da <figma_content> — nunca invente nomes de CDUs, componentes ou comportamentos
@@ -438,6 +462,75 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                 },
               },
               required: ['type', 'channel', 'links'],
+            },
+            {
+              type: 'object',
+              description: 'Before/after comparison slide',
+              properties: {
+                type: { type: 'string', const: 'before_after' },
+                title: { type: 'string' },
+                before: {
+                  type: 'object',
+                  properties: {
+                    label: { type: 'string', description: 'ex: "Antes (Andes Legacy)"' },
+                    points: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['label', 'points'],
+                },
+                after: {
+                  type: 'object',
+                  properties: {
+                    label: { type: 'string', description: 'ex: "Depois (Andes X)"' },
+                    points: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['label', 'points'],
+                },
+                imageNote: { type: 'string' },
+              },
+              required: ['type', 'title', 'before', 'after'],
+            },
+            {
+              type: 'object',
+              description: 'Micro-interactions slide',
+              properties: {
+                type: { type: 'string', const: 'microinteraction' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+                behaviors: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string', description: 'ex: "Cursor piscando"' },
+                      spec: { type: 'string', description: 'Especificação técnica da animação' },
+                      trigger: { type: 'string', description: 'Quando ocorre' },
+                    },
+                    required: ['name', 'spec'],
+                  },
+                },
+                imageNote: { type: 'string' },
+              },
+              required: ['type', 'title', 'behaviors'],
+            },
+            {
+              type: 'object',
+              description: 'Index / table of contents slide',
+              properties: {
+                type: { type: 'string', const: 'index' },
+                sections: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      number: { type: 'number' },
+                      title: { type: 'string' },
+                      items: { type: 'array', items: { type: 'string' } },
+                    },
+                    required: ['number', 'title', 'items'],
+                  },
+                },
+              },
+              required: ['type', 'sections'],
             },
           ],
         },
