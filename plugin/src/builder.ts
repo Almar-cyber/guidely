@@ -755,7 +755,8 @@ function buildBehaviorSlide(
   tHead.paddingTop = 12
   tHead.paddingBottom = 12
 
-  ;['Estado / Condição', 'Descrição'].forEach((h) => {
+  const headers = ['Estado / Condição', 'Descrição']
+  headers.forEach((h) => {
     const cell = makeFrame('header cell')
     cell.fills = []
     cell.layoutGrow = 1
