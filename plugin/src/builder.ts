@@ -1105,7 +1105,7 @@ function buildBeforeAfterSlide(
       row.appendChild(bullet)
 
       const txt = makeText(pt, 16, FONTS.regular, COLORS.textPrimary)
-      txt.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+      txt.lineHeight = { value: 150, unit: 'PERCENT' }
       txt.layoutGrow = 1
       row.appendChild(txt)
 
@@ -1161,7 +1161,7 @@ function buildMicrointeractionSlide(
 
   if (slide.description) {
     const desc = makeText(slide.description, 16, FONTS.regular, COLORS.textSecondary)
-    desc.lineHeight = { value: 1.6, unit: 'MULTIPLIER' }
+    desc.lineHeight = { value: 160, unit: 'PERCENT' }
     desc.layoutSizingHorizontal = 'FILL' as any
     content.appendChild(desc)
   }
@@ -1184,7 +1184,7 @@ function buildMicrointeractionSlide(
     }
 
     const spec = makeText(b.spec, 13, FONTS.regular, COLORS.textSecondary)
-    spec.lineHeight = { value: 1.5, unit: 'MULTIPLIER' }
+    spec.lineHeight = { value: 150, unit: 'PERCENT' }
     spec.layoutSizingHorizontal = 'FILL' as any
     card.appendChild(spec)
 
