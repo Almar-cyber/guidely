@@ -371,11 +371,7 @@ export default function App() {
         analyzeStageTimeoutRef.current = null
       }
       const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      setAnalyzeError(
-        msg === 'Failed to fetch'
-          ? 'Token do Figma inválido ou expirado. Vá em Credenciais e gere um novo token.'
-          : msg
-      )
+      setAnalyzeError(msg)
       setStep('files')
     }
   }

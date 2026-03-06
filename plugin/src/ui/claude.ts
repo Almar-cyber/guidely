@@ -226,11 +226,17 @@ export async function readFigmaFiles(
   referenceFileId?: string,
   destinationFileId?: string
 ): Promise<string> {
-  const res = await fetch(`${BASE_URL}/api/read-file`, {
-    method: 'POST',
-    headers: authHeaders(anthropicKey),
-    body: JSON.stringify({ token: figmaToken, referenceFileId, destinationFileId }),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}/api/read-file`, {
+      method: 'POST',
+      headers: authHeaders(anthropicKey),
+      body: JSON.stringify({ token: figmaToken, referenceFileId, destinationFileId }),
+    })
+  } catch (err) {
+    // Network errors (Failed to fetch, etc)
+    throw new Error('Erro de conexão. Verifique sua internet e tente novamente.')
+  }
 
   const data = await res.json() as { context?: string; error?: string; truncated?: boolean }
 
