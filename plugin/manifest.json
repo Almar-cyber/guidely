@@ -6,10 +6,7 @@
   "main": "dist/main.js",
   "ui": "dist/ui.html",
   "networkAccess": {
-    "allowedDomains": [
-      "https://guidely-mu.vercel.app",
-      "http://localhost:3000"
-    ]
+    "allowedDomains": ["https://guidely-mu.vercel.app"]
   },
   "documentAccess": "dynamic-page"
 }
