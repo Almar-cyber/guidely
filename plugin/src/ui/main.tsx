@@ -1,3 +1,5 @@
+console.log('[Guidely UI] bundle loaded at', new Date().toISOString())
+
 import { createRoot } from 'react-dom/client'
 import App from './App'
 

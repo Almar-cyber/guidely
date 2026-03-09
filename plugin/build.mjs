@@ -35,7 +35,6 @@ async function buildUI() {
     target: 'es2017',
     format: 'iife',
     jsx: 'automatic',
-    sourcemap: 'inline',
     logLevel: 'info',
     define: {
       __GUIDELY_BASE_URL__: JSON.stringify(resolvedBaseUrl),

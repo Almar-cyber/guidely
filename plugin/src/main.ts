@@ -1,3 +1,5 @@
+console.log('[Guidely] main.ts loading...')
+
 import { buildGuideline } from './builder'
 import type { UIToPlugin } from './types'
 
@@ -32,12 +34,14 @@ async function withTimeout<T>(
   }
 }
 
+console.log('[Guidely] about to showUI...')
 figma.showUI(__html__, {
   width: 400,
   height: 640,
   title: 'Guidely',
   themeColors: true,
 })
+console.log('[Guidely] showUI done, setting up credential loader...')
 
 // Send stored credentials to UI on open
 async function sendStoredCredentials() {
@@ -53,7 +57,9 @@ async function sendStoredCredentials() {
 }
 sendStoredCredentials()
 
+console.log('[Guidely] setting up onmessage handler...')
 figma.ui.onmessage = async (msg: UIToPlugin) => {
+  console.log('[Guidely] received message:', msg.type)
   if (msg.type === 'GET_CREDENTIALS') {
     const [figmaToken, anthropicKey] = await Promise.all([
       figma.clientStorage.getAsync(KEY_FIGMA) as Promise<string | undefined>,
