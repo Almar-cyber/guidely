@@ -1,19 +1,10 @@
 export const config = { runtime: 'edge' }
 
-const ALLOWED_ORIGINS = new Set([
-  'https://www.figma.com',
-  'https://figma.com',
-  'https://guidely-mu.vercel.app',
-])
-
-function corsHeaders(req?: Request): Record<string, string> {
-  const origin = req?.headers.get('Origin') ?? ''
-  const allowedOrigin = origin === 'null' || ALLOWED_ORIGINS.has(origin) ? origin : ALLOWED_ORIGINS.values().next().value!
+function corsHeaders(): Record<string, string> {
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Anthropic-Key',
-    'Vary': 'Origin',
   }
 }
 
@@ -156,7 +147,7 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      headers: corsHeaders(req),
+      headers: corsHeaders(),
     })
   }
 
@@ -169,7 +160,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!referenceFileId && !destinationFileId) {
     return new Response(JSON.stringify({ error: 'Informe ao menos um arquivo Figma.' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() },
     })
   }
 
@@ -196,7 +187,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ context, truncated }), {
       headers: {
         'Content-Type': 'application/json',
-        ...corsHeaders(req),
+        ...corsHeaders(),
       },
     })
   } catch (err) {
@@ -205,7 +196,7 @@ export default async function handler(req: Request): Promise<Response> {
       status: 400,
       headers: {
         'Content-Type': 'application/json',
-        ...corsHeaders(req),
+        ...corsHeaders(),
       },
     })
   }

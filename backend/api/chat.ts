@@ -2,30 +2,20 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const config = { runtime: 'edge' }
 
-const ALLOWED_ORIGINS = new Set([
-  'https://www.figma.com',
-  'https://figma.com',
-  'https://guidely-mu.vercel.app',
-])
-
-function corsHeaders(req?: Request): Record<string, string> {
-  const origin = req?.headers.get('Origin') ?? ''
-  // Figma plugin iframes send null origin; also allow known domains
-  const allowedOrigin = origin === 'null' || ALLOWED_ORIGINS.has(origin) ? origin : ALLOWED_ORIGINS.values().next().value!
+function corsHeaders(): Record<string, string> {
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Anthropic-Key',
-    'Vary': 'Origin',
   }
 }
 
-function jsonResponse(payload: unknown, status = 200, req?: Request): Response {
+function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...corsHeaders(req),
+      ...corsHeaders(),
     },
   })
 }
@@ -552,7 +542,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders(req) })
+    return new Response(null, { headers: corsHeaders() })
   }
 
   try {
@@ -568,11 +558,11 @@ export default async function handler(req: Request): Promise<Response> {
     const apiKey = isUserKey ? userToken : backendKey
 
     if (!apiKey) {
-      return jsonResponse({ error: 'Backend não configurado. Fale com o admin.' }, 500, req)
+      return jsonResponse({ error: 'Backend não configurado. Fale com o admin.' }, 500)
     }
 
     if (!isUserKey && accessCode && userToken !== accessCode) {
-      return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401, req)
+      return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401)
     }
 
     const { messages, figmaContext = '', requestId } = await req.json() as {
@@ -582,7 +572,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return jsonResponse({ error: 'Payload inválido: messages é obrigatório.' }, 400, req)
+      return jsonResponse({ error: 'Payload inválido: messages é obrigatório.' }, 400)
     }
 
     const forceGuidelineTool = shouldForceGuidelineTool(messages)
@@ -658,11 +648,11 @@ export default async function handler(req: Request): Promise<Response> {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        ...corsHeaders(req),
+        ...corsHeaders(),
       },
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro inesperado no endpoint de chat.'
-    return jsonResponse({ error: message }, 500, req)
+    return jsonResponse({ error: message }, 500)
   }
 }
