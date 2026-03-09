@@ -234,8 +234,8 @@ export async function readFigmaFiles(
       body: JSON.stringify({ token: figmaToken, referenceFileId, destinationFileId }),
     })
   } catch (err) {
-    // Network errors (Failed to fetch, etc)
-    throw new Error('Erro de conexão. Verifique sua internet e tente novamente.')
+    const detail = err instanceof Error ? err.message : String(err)
+    throw new Error(`Erro de conexão com o servidor (${detail}). Verifique sua internet e tente novamente.`)
   }
 
   const data = await res.json() as { context?: string; error?: string; truncated?: boolean }
