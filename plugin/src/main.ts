@@ -153,4 +153,11 @@ figma.ui.onmessage = async (msg: UIToPlugin) => {
   }
 
   if (msg.type === 'CLOSE') figma.closePlugin()
+
+  // Debug: log UI errors to Figma console
+  if ((msg as { type: string }).type === 'LOG_ERROR') {
+    const m = msg as unknown as { message: string; stack: string }
+    console.error('[UI ERROR]', m.message)
+    if (m.stack) console.error('[STACK]', m.stack)
+  }
 }
