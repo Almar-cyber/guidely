@@ -16,7 +16,7 @@ function extractOptions(text: string): { clean: string; options: string[] } {
 // Simple markdown renderer
 function md(text: string): string {
   return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;font-family:monospace;font-size:11px">$1</code>')
@@ -39,8 +39,25 @@ import {
   Sparkles, FolderOpen, Bot, Wand2, Eye, EyeOff,
   CheckCircle2, Camera, FileText, Pencil, PartyPopper,
   ArrowLeft, ArrowRight, Send, Copy, RotateCcw,
-  ChevronRight, Link2, Image, Layers
+  ChevronRight, Link2, Image, Layers, StopCircle
 } from 'lucide-react'
+
+function copyToClipboard(text: string): void {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyToClipboardFallback(text))
+  } else {
+    copyToClipboardFallback(text)
+  }
+}
+function copyToClipboardFallback(text: string): void {
+  const el = document.createElement('textarea')
+  el.value = text
+  el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
+  document.body.appendChild(el)
+  el.focus(); el.select()
+  document.execCommand('copy')
+  document.body.removeChild(el)
+}
 import type { GuidelineData, Slide, PluginToUI } from '../types'
 import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
@@ -125,23 +142,9 @@ export default function App() {
   const CLI_CMD = `security find-generic-password -s "Claude Code" -a "$(whoami)" -w | pbcopy`
 
   const handleCopyCmd = () => {
-    // Figma plugin sandbox: clipboard API may be blocked, use execCommand fallback
-    try {
-      const el = document.createElement('textarea')
-      el.value = CLI_CMD
-      el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
-      document.body.appendChild(el)
-      el.focus()
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-      setCmdCopied(true)
-      setTimeout(() => setCmdCopied(false), 3000)
-    } catch {
-      navigator.clipboard?.writeText(CLI_CMD).catch(() => {})
-      setCmdCopied(true)
-      setTimeout(() => setCmdCopied(false), 3000)
-    }
+    copyToClipboard(CLI_CMD)
+    setCmdCopied(true)
+    setTimeout(() => setCmdCopied(false), 3000)
   }
   const [figmaManual, setFigmaManual] = useState(false)
   const [figmaTokenManual, setFigmaTokenManual] = useState('')
@@ -178,17 +181,20 @@ export default function App() {
   const buildRequestIdRef = useRef<string | null>(null)
   const buildStageRef = useRef('')
   const analyzeStageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamAbortRef = useRef<AbortController | null>(null)
 
   // Cleanup polling/timeouts on unmount
   useEffect(() => () => {
-    if (pollRef.current) clearInterval(pollRef.current)
-    if (anthropicPollRef.current) clearInterval(anthropicPollRef.current)
+    if (pollRef.current) clearTimeout(pollRef.current)
+    if (anthropicPollRef.current) clearTimeout(anthropicPollRef.current)
     if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
     if (analyzeStageTimeoutRef.current) clearTimeout(analyzeStageTimeoutRef.current)
+    streamAbortRef.current?.abort()
   }, [])
 
   useEffect(() => {
     parent.postMessage({ pluginMessage: { type: 'GET_CREDENTIALS' } }, '*')
+    parent.postMessage({ pluginMessage: { type: 'GET_GUIDELINE' } }, '*')
   }, [])
 
   useEffect(() => {
@@ -205,6 +211,15 @@ export default function App() {
         }
         if (msg.figmaToken && msg.anthropicKey) setStep('files')
         else if (msg.figmaToken || msg.anthropicKey) setStep('connect')
+      }
+      if (msg.type === 'STORED_GUIDELINE' && msg.guideline) {
+        try {
+          const parsed = JSON.parse(msg.guideline) as GuidelineData
+          if (parsed.slides?.length) {
+            setGuideline(parsed)
+            // Don't auto-navigate — just cache it for recovery
+          }
+        } catch { /* ignore corrupt data */ }
       }
       if (msg.type === 'BUILD_STARTED') {
         const activeRequestId = buildRequestIdRef.current
@@ -273,25 +288,26 @@ export default function App() {
       window.open(url, '_blank')
 
       let attempts = 0
-      anthropicPollRef.current = setInterval(async () => {
+      const poll = () => {
         attempts++
         if (attempts > 150) {
-          clearInterval(anthropicPollRef.current!)
           setAnthropicOAuthStatus('error')
           setAnthropicOAuthError('Tempo esgotado. Tente novamente.')
           return
         }
-        try {
-          const key = await pollAnthropicKey(state)
+        pollAnthropicKey(state).then((key) => {
           if (key) {
-            clearInterval(anthropicPollRef.current!)
             setAnthropicKey(key)
             setAnthropicOAuthStatus('done')
+          } else {
+            anthropicPollRef.current = setTimeout(poll, 2000)
           }
-        } catch { /* keep polling */ }
-      }, 2000)
+        }).catch(() => {
+          anthropicPollRef.current = setTimeout(poll, 2000)
+        })
+      }
+      anthropicPollRef.current = setTimeout(poll, 2000)
     } catch {
-      // OAuth not available — fall back to access code
       setAnthropicOAuthStatus('idle')
     }
   }
@@ -305,25 +321,26 @@ export default function App() {
       window.open(url, '_blank')
 
       let attempts = 0
-      pollRef.current = setInterval(async () => {
+      const poll = () => {
         attempts++
         if (attempts > 150) {
-          clearInterval(pollRef.current!)
           setOauthStatus('idle')
-          setFigmaManual(true) // fallback to manual token
+          setFigmaManual(true)
           return
         }
-        try {
-          const token = await pollFigmaToken(state)
+        pollFigmaToken(state).then((token) => {
           if (token) {
-            clearInterval(pollRef.current!)
             setFigmaToken(token)
             setOauthStatus('done')
+          } else {
+            pollRef.current = setTimeout(poll, 2000)
           }
-        } catch { /* keep polling */ }
-      }, 2000)
+        }).catch(() => {
+          pollRef.current = setTimeout(poll, 2000)
+        })
+      }
+      pollRef.current = setTimeout(poll, 2000)
     } catch {
-      // Backend not deployed yet — fall back to manual token input
       setOauthStatus('idle')
       setFigmaManual(true)
     }
@@ -376,7 +393,20 @@ export default function App() {
     }
   }
 
+  const cancelStream = useCallback(() => {
+    streamAbortRef.current?.abort()
+    streamAbortRef.current = null
+    setIsStreaming(false)
+    setIsGenerating(false)
+    setGenerationStage('')
+    setStreamingText('')
+  }, [])
+
   const startConversation = useCallback((context: string) => {
+    streamAbortRef.current?.abort()
+    const abortController = new AbortController()
+    streamAbortRef.current = abortController
+
     const init: Message = { role: 'user', content: 'Analisou os arquivos Figma. Faça as perguntas necessárias para criar o guideline.' }
     setMessages([init])
     setIsStreaming(true)
@@ -393,7 +423,9 @@ export default function App() {
         setGenerationStage('Montando guideline…')
       },
       onGuideline: (data) => {
-        setGuideline(data as GuidelineData)
+        const g = data as GuidelineData
+        setGuideline(g)
+        parent.postMessage({ pluginMessage: { type: 'SAVE_GUIDELINE', guideline: JSON.stringify(g) } }, '*')
         setStreamingText('')
         setIsStreaming(false)
         setIsGenerating(false)
@@ -419,11 +451,15 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId })
+    }, { requestId, abortSignal: abortController.signal })
   }, [anthropicKey])
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim() || isStreaming) return
+    streamAbortRef.current?.abort()
+    const abortController = new AbortController()
+    streamAbortRef.current = abortController
+
     const userMsg: Message = { role: 'user', content: text.trim() }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
@@ -447,16 +483,15 @@ export default function App() {
         guidelineReceived = true
         const d = data as GuidelineData
         setGuideline(d)
+        parent.postMessage({ pluginMessage: { type: 'SAVE_GUIDELINE', guideline: JSON.stringify(d) } }, '*')
         setStreamingText('')
         setIsStreaming(false)
         setIsGenerating(false)
         setGenerationStage('')
-        // Debug: show slide count before transitioning
         setMessages((p) => [...p, {
           role: 'assistant',
           content: `✅ ${d.slides?.length ?? 0} slides gerados — abrindo preview…`
         }])
-        // Small delay to ensure the message renders before step change
         setTimeout(() => setStep('preview'), 100)
       },
       onError: (m) => {
@@ -486,7 +521,7 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId })
+    }, { requestId, abortSignal: abortController.signal })
   }, [messages, isStreaming, figmaContext, anthropicKey])
 
   const handleBuildFigma = () => {
@@ -505,7 +540,7 @@ export default function App() {
     setBuildProgress(0.01)
     parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline, requestId } }, '*')
 
-    // Safety timeout — adaptive to slide count to reduce false timeouts on larger guidelines
+    // Safety timeout — slightly longer than main.ts timeout to let the plugin-side timeout fire first
     if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
     buildTimeoutRef.current = setTimeout(() => {
       setIsBuilding((current) => {
@@ -520,7 +555,7 @@ export default function App() {
         }
         return current
       })
-    }, timeoutMs)
+    }, timeoutMs + 5000) // 5s grace period over main.ts timeout
   }
 
   const handleExportDoc = () => {
@@ -530,18 +565,14 @@ export default function App() {
   }
 
   const handleCopy = () => {
-    const el = document.createElement('textarea')
-    el.value = docMarkdown
-    el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
-    document.body.appendChild(el)
-    el.focus(); el.select()
-    document.execCommand('copy')
-    document.body.removeChild(el)
+    copyToClipboard(docMarkdown)
     setDocCopied(true)
     setTimeout(() => setDocCopied(false), 3000)
   }
 
   const handleReset = () => {
+    streamAbortRef.current?.abort()
+    streamAbortRef.current = null
     setStep('files')
     setMessages([])
     setQuickOptions([])
@@ -652,14 +683,14 @@ export default function App() {
                   onChange={(e) => {
                     const val = e.target.value.trim()
                     setFigmaTokenManual(e.target.value)
-                    // Valid Figma tokens start with figd_ and are at least 40 chars
-                    if (val.startsWith('figd_') && val.length >= 40) setFigmaToken(val)
+                    // Valid Figma tokens start with figd_ (personal) or figo_ (OAuth) and are at least 40 chars
+                    if ((val.startsWith('figd_') || val.startsWith('figo_')) && val.length >= 40) setFigmaToken(val)
                     else setFigmaToken('')
                   }}
                 />
                 {figmaTokenManual.length > 4 && !figmaToken && (
                   <span style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 4, display: 'block' }}>
-                    Token inválido — deve começar com figd_
+                    Token inválido — deve começar com figd_ ou figo_
                   </span>
                 )}
               </label>
@@ -894,9 +925,15 @@ export default function App() {
               onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 100)}px` }}
               rows={1}
             />
-            <button className="send-btn" onClick={() => sendMessage(chatInput)} disabled={isStreaming || !chatInput.trim()}>
-              <Send size={14} color="#fff" />
-            </button>
+            {isStreaming ? (
+              <button className="send-btn" onClick={cancelStream} title="Cancelar" style={{ background: 'var(--color-danger, #ed314a)' }}>
+                <StopCircle size={14} color="#fff" />
+              </button>
+            ) : (
+              <button className="send-btn" onClick={() => sendMessage(chatInput)} disabled={!chatInput.trim()}>
+                <Send size={14} color="#fff" />
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -143,6 +143,38 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
           return { ok: false, error: `Slide ${i + 1}: contact inválido` }
         }
         break
+
+      case 'before_after':
+        if (!isStr(s.title) || !isObj(s.before) || !isObj(s.after)) {
+          return { ok: false, error: `Slide ${i + 1}: before_after inválido` }
+        }
+        if (!isStr((s.before as Record<string, unknown>).label)) (s.before as Record<string, unknown>).label = 'Antes'
+        if (!Array.isArray((s.before as Record<string, unknown>).points)) (s.before as Record<string, unknown>).points = []
+        if (!isStr((s.after as Record<string, unknown>).label)) (s.after as Record<string, unknown>).label = 'Depois'
+        if (!Array.isArray((s.after as Record<string, unknown>).points)) (s.after as Record<string, unknown>).points = []
+        break
+
+      case 'microinteraction':
+        if (!isStr(s.title) || !Array.isArray(s.behaviors)) {
+          return { ok: false, error: `Slide ${i + 1}: microinteraction inválido` }
+        }
+        s.behaviors = (s.behaviors as Record<string, unknown>[]).map((b) => ({
+          name: isStr(b.name) ? b.name : 'Interação',
+          spec: isStr(b.spec) ? b.spec : '',
+          trigger: isStr(b.trigger) ? b.trigger : undefined,
+        }))
+        break
+
+      case 'index':
+        if (!Array.isArray(s.sections)) {
+          return { ok: false, error: `Slide ${i + 1}: index sem sections` }
+        }
+        s.sections = (s.sections as Record<string, unknown>[]).map((sec, si) => ({
+          number: isNum(sec.number) ? sec.number : si + 1,
+          title: isStr(sec.title) ? sec.title : `Seção ${si + 1}`,
+          items: isStringArray(sec.items) ? sec.items : [],
+        }))
+        break
     }
   }
 
@@ -204,6 +236,7 @@ export interface StreamCallbacks {
 
 export interface StreamChatOptions {
   requestId?: string
+  abortSignal?: AbortSignal
 }
 
 function authHeaders(anthropicKey: string): Record<string, string> {
@@ -308,8 +341,24 @@ export async function streamChat(
   const contextLimit = RETRY_CONTEXT_LIMITS[Math.min(attempt, RETRY_CONTEXT_LIMITS.length - 1)]
   const effectiveContext = compactContextForRetry(figmaContext, contextLimit)
   const { firstByteMs, idleMs, totalMs } = computeStreamTimeouts(effectiveContext, messages)
+  // Exponential backoff before retry
+  if (attempt > 0) {
+    const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
+    await new Promise((r) => setTimeout(r, backoffMs))
+  }
+
   const controller = new AbortController()
-  let abortReason: 'first_byte' | 'idle' | 'total' | null = null
+
+  // Link external abort signal so callers can cancel the stream
+  if (options.abortSignal) {
+    if (options.abortSignal.aborted) {
+      cb.onDone()
+      return
+    }
+    options.abortSignal.addEventListener('abort', () => controller.abort(), { once: true })
+  }
+
+  let abortReason: 'first_byte' | 'idle' | 'total' | 'user' | null = null
   let firstByteTimeout: ReturnType<typeof setTimeout> | null = null
   let totalTimeout: ReturnType<typeof setTimeout> | null = null
   let idleTimeout: ReturnType<typeof setTimeout> | null = null
@@ -348,6 +397,7 @@ export async function streamChat(
     })
   } catch {
     clearWatchdogs()
+    if (options.abortSignal?.aborted) { cb.onDone(); return }
     if (controller.signal.aborted) {
       const canRetry = attempt < STREAM_TIMEOUT_RETRY_LIMIT
       if (canRetry) {
@@ -561,6 +611,7 @@ export async function streamChat(
     }
   } catch {
     clearWatchdogs()
+    if (options.abortSignal?.aborted) { cb.onDone(); return }
     if (controller.signal.aborted) {
       const canRetry = attempt < STREAM_TIMEOUT_RETRY_LIMIT && !guidelineEmitted
       if (canRetry) {

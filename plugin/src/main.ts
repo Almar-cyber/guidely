@@ -3,6 +3,7 @@ import type { UIToPlugin } from './types'
 
 const KEY_FIGMA = 'figma_token'
 const KEY_ANTHROPIC = 'anthropic_key'
+const KEY_GUIDELINE = 'last_guideline'
 let activeBuildRequestId: string | null = null
 
 function createRequestId(): string {
@@ -69,6 +70,15 @@ figma.ui.onmessage = async (msg: UIToPlugin) => {
       figma.clientStorage.setAsync(KEY_FIGMA, msg.figmaToken),
       figma.clientStorage.setAsync(KEY_ANTHROPIC, msg.anthropicKey),
     ])
+  }
+
+  if (msg.type === 'SAVE_GUIDELINE') {
+    await figma.clientStorage.setAsync(KEY_GUIDELINE, msg.guideline)
+  }
+
+  if (msg.type === 'GET_GUIDELINE') {
+    const guideline = await figma.clientStorage.getAsync(KEY_GUIDELINE) as string | undefined
+    figma.ui.postMessage({ type: 'STORED_GUIDELINE', guideline: guideline ?? '' })
   }
 
   if (msg.type === 'BUILD_SLIDES') {

@@ -40,7 +40,12 @@ function makeFrame(name: string): FrameNode {
 
 function makeText(content: string, size: number, font: FontName, color: RGB): TextNode {
   const t = figma.createText()
-  t.fontName = font
+  try {
+    t.fontName = font
+  } catch {
+    // Font not loaded — fall back to whatever is currently loaded
+    try { t.fontName = FONTS.regular } catch { /* keep default font */ }
+  }
   t.fontSize = size
   t.characters = content ?? ''
   t.fills = solid(color)
@@ -1337,6 +1342,9 @@ export async function buildGuideline(data: GuidelineData, options?: BuildGuideli
   ensureBuildNotAborted(options)
 
   const page = figma.currentPage
+  // Required for documentAccess: "dynamic-page" — without this, appendChild() fails silently
+  await page.loadAsync()
+
   let slideNum = 1
   const skipped: string[] = []
   const totalSlides = data.slides.length || 1

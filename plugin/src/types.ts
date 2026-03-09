@@ -114,6 +114,7 @@ export interface GuidelineData {
 
 export type PluginToUI =
   | { type: 'STORED_CREDENTIALS'; figmaToken: string; anthropicKey: string }
+  | { type: 'STORED_GUIDELINE'; guideline: string }
   | { type: 'BUILD_STARTED'; requestId: string; totalSlides: number }
   | { type: 'BUILD_STAGE'; requestId: string; stage: string; progress?: number }
   | { type: 'BUILD_COMPLETE'; count: number; requestId?: string }
@@ -122,5 +123,7 @@ export type PluginToUI =
 export type UIToPlugin =
   | { type: 'GET_CREDENTIALS' }
   | { type: 'SAVE_CREDENTIALS'; figmaToken: string; anthropicKey: string }
+  | { type: 'SAVE_GUIDELINE'; guideline: string }
+  | { type: 'GET_GUIDELINE' }
   | { type: 'BUILD_SLIDES'; data: GuidelineData; requestId?: string }
   | { type: 'CLOSE' }

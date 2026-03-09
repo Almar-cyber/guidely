@@ -80,6 +80,39 @@ const ContactSlideSchema = z.object({
   links: z.array(z.object({ label: z.string(), url: z.string() })),
 })
 
+const BeforeAfterSlideSchema = z.object({
+  type: z.literal('before_after'),
+  title: z.string(),
+  before: z.object({ label: z.string(), points: z.array(z.string()) }),
+  after: z.object({ label: z.string(), points: z.array(z.string()) }),
+  imageNote: z.string().optional(),
+})
+
+const MicrointeractionSlideSchema = z.object({
+  type: z.literal('microinteraction'),
+  title: z.string(),
+  description: z.string().optional(),
+  behaviors: z.array(
+    z.object({
+      name: z.string(),
+      spec: z.string(),
+      trigger: z.string().optional(),
+    })
+  ),
+  imageNote: z.string().optional(),
+})
+
+const IndexSlideSchema = z.object({
+  type: z.literal('index'),
+  sections: z.array(
+    z.object({
+      number: z.number(),
+      title: z.string(),
+      items: z.array(z.string()),
+    })
+  ),
+})
+
 export const SlideSchema = z.discriminatedUnion('type', [
   CoverSlideSchema,
   ObjectiveSlideSchema,
@@ -91,6 +124,9 @@ export const SlideSchema = z.discriminatedUnion('type', [
   DoDontSlideSchema,
   WordingSlideSchema,
   ContactSlideSchema,
+  BeforeAfterSlideSchema,
+  MicrointeractionSlideSchema,
+  IndexSlideSchema,
 ])
 
 export const GuidelineSchema = z.object({
@@ -132,6 +168,9 @@ export const GENERATE_GUIDELINE_TOOL = {
                 'do_dont',
                 'wording',
                 'contact',
+                'before_after',
+                'microinteraction',
+                'index',
               ],
             },
           },
