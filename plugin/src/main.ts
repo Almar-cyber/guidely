@@ -40,7 +40,7 @@ figma.showUI(__html__, {
 })
 
 // Send stored credentials to UI on open
-;(async () => {
+async function sendStoredCredentials() {
   const [figmaToken, anthropicKey] = await Promise.all([
     figma.clientStorage.getAsync(KEY_FIGMA) as Promise<string | undefined>,
     figma.clientStorage.getAsync(KEY_ANTHROPIC) as Promise<string | undefined>,
@@ -50,7 +50,8 @@ figma.showUI(__html__, {
     figmaToken: figmaToken ?? '',
     anthropicKey: anthropicKey ?? '',
   })
-})()
+}
+sendStoredCredentials()
 
 figma.ui.onmessage = async (msg: UIToPlugin) => {
   if (msg.type === 'GET_CREDENTIALS') {
