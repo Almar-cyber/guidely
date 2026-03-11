@@ -263,19 +263,25 @@ function makeDivider(): FrameNode {
   return d
 }
 
-/** appendChild + set layoutSizingHorizontal='FILL' (must be done after parenting) */
+/** appendChild + set layoutSizingHorizontal='FILL' (must be done after parenting)
+ * IMPORTANT: Only sets FILL when the parent has auto-layout (layoutMode !== 'NONE').
+ * Setting layoutSizingHorizontal='FILL' on a child of a non-auto-layout frame
+ * collapses the child to 0px width, making all content invisible. */
 function appendFill<T extends SceneNode>(parent: FrameNode, child: T): T {
   if (!parent || !child) {
     console.warn('[appendFill] skipping — parent or child is null/undefined')
     return child
   }
   parent.appendChild(child)
-  try {
-    if ('layoutSizingHorizontal' in child) {
-      ;(child as any).layoutSizingHorizontal = 'FILL'
+  // Only set FILL when parent has auto-layout — non-auto-layout parents collapse child to 0px
+  if ((parent as FrameNode).layoutMode !== 'NONE') {
+    try {
+      if ('layoutSizingHorizontal' in child) {
+        ;(child as any).layoutSizingHorizontal = 'FILL'
+      }
+    } catch (err) {
+      console.warn(`[appendFill] could not set FILL on ${child.name}: ${err}`)
     }
-  } catch (err) {
-    console.warn(`[appendFill] could not set FILL on ${child.name}: ${err}`)
   }
   return child
 }
