@@ -6,41 +6,57 @@ export const SLIDE_WIDTH = 1920   // Updated to modern 16:9 standard (was 1440)
 export const SLIDE_HEIGHT = 1080  // Updated to modern 16:9 standard (was 900)
 export const SLIDE_GAP = 100       // Increased spacing between slides
 
-// Andes X ax-color tokens (source: 01 Main library [Andes X])
+// Andes X design tokens (source: 01 Main library [Andes X], ksPpKcDXCSni1iK9azu7GX)
+// Slide template reference: CALCU playground [Andes X}, node 945-161927
 export const COLORS = {
-  // Slide backgrounds
-  bg:           { r: 1,     g: 1,     b: 1     },  // white
-  bgSection:    { r: 0.957, g: 0.961, b: 0.976 },  // ax-gray/100 #f4f5f9
-  bgSection2:   { r: 0.906, g: 0.914, b: 0.953 },  // ax-gray/200 #e7e9f3
+  // ── Backgrounds ─────────────────────────────────────────────
+  bg:            { r: 1,     g: 1,     b: 1     },  // #ffffff  color/background/primary
+  bgCover:       { r: 1,     g: 0.902, b: 0     },  // #ffe600  ax-color/yellow/500 — cover + section break
+  bgSection:     { r: 0.957, g: 0.961, b: 0.976 },  // #f4f5f9  component-focus + do/dont slides
+  bgDetail:      { r: 0.906, g: 0.914, b: 0.953 },  // #e7e9f3  color/background/secondary
+  bgComponent:   { r: 0.710, g: 0.725, b: 0.831 },  // #b5b9d4  component block placeholders
+  bgComponentAlt:{ r: 0.878, g: 0.886, b: 0.930 },  // #e0e2ed  lighter component blocks
+  bgTableHeader: { r: 0.157, g: 0.157, b: 0.2   },  // #282833  glossary table headers
+  bgTableRow:    { r: 0.957, g: 0.961, b: 0.976 },  // #f4f5f9  alternate row
+  bgBadge:       { r: 1,     g: 1,     b: 1     },  // #ffffff  cover badge background
 
-  // Dark bg — CHO header style (ax-dark-gray/200)
-  bgDark:       { r: 0.051, g: 0.051, b: 0.106 },  // #0d0d1b
+  // ── Text ────────────────────────────────────────────────────
+  textPrimary:   { r: 0.157, g: 0.157, b: 0.2   },  // #282833  color/text/primary
+  textSecondary: { r: 0.392, g: 0.396, b: 0.529 },  // #646587  color/text/secondary
+  textLight:     { r: 1,     g: 1,     b: 1     },  // #ffffff  color/text/inverse
+  textDisabled:  { r: 0.612, g: 0.620, b: 0.749 },  // #9c9ebf  color/text/disabled (coming soon)
+  textOnCover:   { r: 0.157, g: 0.157, b: 0.2   },  // #282833  text on yellow background
 
-  // Andes X primary (blue/700) — used for section labels, tags
-  accent:       { r: 0.263, g: 0.294, b: 0.894 },  // #434be4
-  accentLight:  { r: 0.914, g: 0.945, b: 1     },  // ax-blue/100 #e9f1ff
+  // ── Accent ──────────────────────────────────────────────────
+  accent:        { r: 0.263, g: 0.294, b: 0.894 },  // #434be4  color/text/accent
+  accentDark:    { r: 0.153, g: 0.173, b: 0.588 },  // #272c96  color/selected/text/active
+  accentLight:   { r: 0.914, g: 0.945, b: 1     },  // #e9f1ff  ax-blue/100
 
-  // Mercado Pago green — used for cover accent line & CTA
-  mpGreen:      { r: 0,     g: 0.651, b: 0.314 },  // #00a650
-  mpGreenLight: { r: 0.902, g: 0.969, b: 0.933 },  // #e6f7ee
+  // ── Feedback ────────────────────────────────────────────────
+  dontRed:       { r: 0.878, g: 0.243, b: 0.102 },  // #e03e1a  Don't overlay color
+  dontRedLight:  { r: 0.878, g: 0.243, b: 0.102 },  // used at 10% opacity
+  doGreen:       { r: 0.122, g: 0.537, b: 0.137 },  // #1f8923  color/feedback/text/positive-loud
 
-  // Text
-  textPrimary:  { r: 0.157, g: 0.157, b: 0.200 },  // ax-gray/900 #282833
-  textSecondary:{ r: 0.392, g: 0.396, b: 0.529 },  // ax-gray/700 #646587
-  textLight:    { r: 1,     g: 1,     b: 1     },
+  // ── Borders ─────────────────────────────────────────────────
+  border:        { r: 0.816, g: 0.831, b: 0.902 },  // #d0d4e6  color/border/primary
+  borderLight:   { r: 0.875, g: 0.886, b: 0.93  },  // #e0e2ed  lighter dividers
+  annLine:       { r: 0.710, g: 0.725, b: 0.831 },  // #b5b9d4  annotation connector lines
 
-  // Border
-  border:       { r: 0.816, g: 0.831, b: 0.902 },  // ax-gray/300 #d0d4e6
-  borderLight:  { r: 0.906, g: 0.914, b: 0.953 },  // ax-gray/200
+  // ── CTA ─────────────────────────────────────────────────────
+  ctaBlue:       { r: 0.263, g: 0.294, b: 0.894 },  // #434be4  primary button
 
-  // Do / Don't
-  doGreen:      { r: 0.871, g: 0.980, b: 0.871 },  // ax-green/100 #defade
-  dontRed:      { r: 1,     g: 0.898, b: 0.914 },  // ax-red/100 #ffe5e9
-  dontBorder:   { r: 0.929, g: 0.192, b: 0.290 },  // ax-red/600 #ed314a
+  // ── Tags ────────────────────────────────────────────────────
+  tagBg:         { r: 0.914, g: 0.945, b: 1     },  // #e9f1ff  ax-blue/100
+  tagText:       { r: 0.263, g: 0.294, b: 0.894 },  // #434be4  ax-blue/700
 
-  // Tags
-  tagBg:        { r: 0.914, g: 0.945, b: 1     },  // ax-blue/100
-  tagText:      { r: 0.263, g: 0.294, b: 0.894 },  // ax-blue/700
+  // ── Legacy aliases (keep for compatibility) ──────────────────
+  bgDark:        { r: 0.157, g: 0.157, b: 0.2   },  // replaced by bgTableHeader
+  mpYellow:      { r: 1,     g: 0.902, b: 0     },  // alias for bgCover
+  mpBlue:        { r: 0.263, g: 0.294, b: 0.894 },  // alias for accent
+  mpGreen:       { r: 0.122, g: 0.537, b: 0.137 },  // alias for doGreen
+  mpGreenLight:  { r: 0.902, g: 0.969, b: 0.933 },
+  textMuted:     { r: 0.392, g: 0.396, b: 0.529 },  // alias for textSecondary
+  dontBorder:    { r: 0.878, g: 0.243, b: 0.102 },  // alias for dontRed
 }
 
 // ax-font tokens: family=Inter, weights=400/600/700
@@ -68,7 +84,7 @@ export const OPTIONAL_FONTS = [
 
 export const PAD = {
   slideH: 100,   // horizontal slide padding (was 80)
-  slideTop: 80,  // top padding below header bar (was 64)
+  slideTop: 120, // top padding below floating header (header is 100px tall with paddingTop=62)
   slideBot: 80,  // bottom slide padding (was 64)
   cardH: 48,     // card horizontal padding (was 40)
   cardV: 40,     // card vertical padding (was 32)

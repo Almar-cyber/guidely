@@ -1,4 +1,4 @@
-console.log('[Guidely] main.ts loading...')
+console.log('[Guidely] main.ts v3 loading...')
 
 import { buildGuideline } from './builder'
 import type { UIToPlugin } from './types'

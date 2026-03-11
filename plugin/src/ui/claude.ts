@@ -38,7 +38,12 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
 
   if (!Array.isArray(d.slides) || d.slides.length === 0) return { ok: false, error: 'Campo "slides" ausente ou vazio' }
 
-  const validTypes = ['cover','objective','glossary','anatomy','use_case_map','use_case','behavior','do_dont','wording','contact','before_after','microinteraction','index']
+  const validTypes = [
+    'cover','objective','glossary','anatomy','use_case_map','use_case',
+    'behavior','do_dont','wording','contact','before_after','microinteraction',
+    'index','overview','structure','flow','handoff',
+    'section','component_focus','structure_dual',
+  ]
 
   for (let i = 0; i < d.slides.length; i++) {
     const s = d.slides[i]
@@ -113,9 +118,12 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
         break
 
       case 'do_dont':
-        if (!isStr(s.title) || !isStringArray(s.do) || !isStringArray(s.dont)) {
-          return { ok: false, error: `Slide ${i + 1}: do_dont inválido` }
+        if (!isStr(s.title)) {
+          return { ok: false, error: `Slide ${i + 1}: do_dont sem title` }
         }
+        // do/dont are optional (component variant may use variants[] instead)
+        if (!Array.isArray(s.do)) s.do = []
+        if (!Array.isArray(s.dont)) s.dont = []
         break
 
       case 'wording':
@@ -174,6 +182,19 @@ function validateGuideline(data: unknown): { ok: true; data: unknown } | { ok: f
           title: isStr(sec.title) ? sec.title : `Seção ${si + 1}`,
           items: isStringArray(sec.items) ? sec.items : [],
         }))
+        break
+
+      // Passthrough — builder handles field validation
+      case 'overview':
+      case 'structure':
+      case 'flow':
+      case 'handoff':
+      case 'section':
+      case 'component_focus':
+      case 'structure_dual':
+        if (!isStr(s.title) && s.type !== 'section' && s.type !== 'component_focus') {
+          return { ok: false, error: `Slide ${i + 1}: ${s.type} sem title` }
+        }
         break
     }
   }

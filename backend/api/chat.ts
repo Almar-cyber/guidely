@@ -50,8 +50,8 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
   return /(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)
 }
 
-const MAX_CONTEXT_CHARS = 50000
-const MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION = 28000  // smaller = faster generation = fits in Vercel 30s limit
+const MAX_CONTEXT_CHARS = 180000
+const MAX_CONTEXT_CHARS_FOR_FORCED_GENERATION = 100000
 const MAX_MESSAGES = 16
 const MAX_MESSAGES_FOR_FORCED_GENERATION = 10
 const MAX_MESSAGE_TEXT_CHARS = 5000
@@ -114,10 +114,13 @@ The user explicitly asked to generate now.
 
 - Call \`generate_guideline\` in this response.
 - Do NOT ask additional questions.
-- **IMPORTANT: Keep the total number of slides under 15.** Merge similar slides if needed.
-- Keep each slide's content concise — max 3-4 items per list, max 2 sentences per body.
-- If any detail is missing, use "A confirmar" placeholders and continue.
-- Prioritize completeness over verbosity.
+- **IMPORTANT: Keep the total number of slides between 10 and 25.** For simple components aim for 10–15; for complex ones (multiple CDUs, flows, specs) up to 25. Merge only if content is truly redundant.
+- **Fill ALL fields completely** — do NOT use "A confirmar" or empty strings. Extract everything from the Figma context. If something is unclear, infer from context.
+- For each slide type, populate EVERY optional field that adds value: description, imageNote, note, rationale, variants, countries, bullets, specs, links.
+- Lists: include as many items as needed to be complete (no artificial limits). Every CDU, every behavior state, every wording variant per country.
+- "imageNote" is mandatory on anatomy, use_case, behavior, before_after, microinteraction slides — describe exactly what screenshot to insert.
+- Wording slides: always include variants for each applicable country with exact UI copy strings.
+- Behavior slides: enumerate ALL states found in Figma (zero, loaded, focus, error, disabled, etc.).
 ` : ''}
 
 ## Your process
@@ -247,14 +250,85 @@ Sempre incluir todas as seções relevantes, nessa ordem:
   - trigger: "Ao focar o Amount Field"
 - imageNote: "Inserir vídeo ou GIF do comportamento"
 
-### 13. index (opcional, para guidelines com mais de 8 slides)
+### 13. overview (Visión general — um slide por seção principal)
+- Usar para introduzir cada grande seção antes de entrar nos detalhes
+- sectionLabel: "1 · CHO en pasos" (mesmo padrão dos sections)
+- title: "Visión general"
+- description: 2-3 parágrafos explicando o contexto da seção
+- bullets: pontos-chave resumidos
+- links: links para sub-seções (ex: [{ label: "Listado de medios", arrow: true }])
+- imageNote: "Inserir screenshot da tela principal desta seção"
+
+### 14. structure (Estructura / Specs detalhados)
+- Usar para documentar anatomia detalhada com specs de componentes
+- sectionLabel: "Estructura · Medios · Tarea" (contexto)
+- title: nome do componente/área
+- description: breve descrição
+- specs: array de specs detalhados com variantes por país
+  - name: nome do spec (ex: "Título da tarea")
+  - description: regra de conteúdo (ex: "Elige + cómo + {tarea del flujo}")
+  - variants: [{ country: "MLB", flag: "🇧🇷", value: "Escolha como fazer seu Pix" }]
+  - note: observação adicional (opcional)
+- imageNote: "Inserir screenshot do componente com annotations"
+- IMPORTANTE: gerar múltiplos slides structure quando há muitos specs
+
+### 15. flow (Flows y lógicas)
+- Usar para documentar fluxos de navegação e decision trees
+- sectionLabel: "1 · CHO en pasos"
+- title: "Flows y lógicas"
+- description: contexto do fluxo
+- steps: array de passos do fluxo em sequência
+  - label: nome da tela/ação (ex: "Listado de medios")
+  - type: "screen" | "decision" | "action"
+  - note: descrição breve (opcional)
+- branches: condições/ramificações do fluxo
+  - condition: "SI" ou "NO" ou condição
+  - target: para onde vai
+
+### 16. handoff (links e specs de implementação)
+- Usar no final de cada seção para links de Figma e specs
+- title: "Handoff MLB 🇧🇷" ou "Handoff MLA 🇦🇷"
+- country: tag do país
+- figmaLinks: [{ label: "Protótipo Figma", url: "..." }]
+- specs: [{ label: "Owner", value: "PX Team" }]
+
+### 17. index (opcional, para guidelines com mais de 8 slides)
 - Posicionar logo após o cover
+- **Máximo 5 seções** — o slide tem altura fixa, mais de 5 estoura o limite visual
+- Última seção deve ser sempre "Boas práticas e wording" (ou similar) — não incluir "Contato" no índice
 - sections: cada seção principal do guideline com seus sub-itens
 - Exemplo:
-  ```
+  ${'```'}
   { number: 1, title: "Estrutura base", items: ["Anatomia →", "Specs →"] }
   { number: 2, title: "Casos de uso", items: ["Mapa de CDUs →", "Pix →", "Presets →"] }
-  ```
+  ${'```'}
+
+### 18. section (divisor de seção — slide amarelo com número + título grande)
+- USAR OBRIGATORIAMENTE antes de cada grande seção do guideline (ex: antes de "Casos de uso", antes de "Comportamentos")
+- number: "01", "02" etc (string com zero à esquerda)
+- title: nome da seção (ex: "CHO em passos", "Casos de uso")
+- subtitle: sub-tema da seção (ex: "Visão geral", "Anatomia")
+- bullets: array com os sub-tópicos navegáveis (ex: ["Visão geral →", "Anatomia →", "Flows →"])
+- Exemplo: { type: "section", number: "01", title: "Estrutura base", subtitle: "Visão geral", bullets: ["Anatomia →", "Specs →"] }
+
+### 19. structure_dual (estrutura de tela com 2 variações lado a lado)
+- USAR quando há 2 variações visuais de uma mesma tela (ex: "Caso típico" vs "Com scroll", "Sem ticket" vs "Com ticket")
+- title: título do slide (ex: "Estrutura do Listado de Medios")
+- subtitle: subtítulo opcional
+- leftLabel: label da variação esquerda (ex: "Caso típico")
+- rightLabel: label da variação direita (ex: "Caso com scroll")
+- leftAnnotations: array { name: string, description: string } com os componentes anotados à esquerda
+- rightAnnotations: array { name: string, description: string } com os componentes anotados à direita
+
+### 20. component_focus (foco em um componente específico — slide cinza com breadcrumb)
+- USAR para documentar um componente individual em profundidade (tarea, header, CTA, etc.)
+- breadcrumb: array de strings com o caminho (ex: ["Estrutura", "Listado de medios", "Header"])
+- screenName: nome da tela (ex: "Listado de medios")
+- componentTitle: nome e número do componente (ex: "1. Tarea (Título)")
+- description: o que o componente faz
+- annotation: { title: string, description: string } — regra de conteúdo/spec do componente
+- highlightPosition: onde o componente aparece no mockup ("top" | "middle" | "bottom")
+- Gerar um slide component_focus para cada componente principal identificado no Figma
 
 ## Regras de qualidade de conteúdo
 
@@ -532,6 +606,166 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               },
               required: ['type', 'sections'],
             },
+            {
+              type: 'object',
+              description: 'Overview / Visión general slide — introduces a section with description and mockup',
+              properties: {
+                type: { type: 'string', const: 'overview' },
+                title: { type: 'string' },
+                sectionLabel: { type: 'string', description: 'ex: "1 · CHO en pasos"' },
+                description: { type: 'string' },
+                bullets: { type: 'array', items: { type: 'string' } },
+                links: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { label: { type: 'string' }, arrow: { type: 'boolean' } },
+                    required: ['label'],
+                  },
+                },
+                imageNote: { type: 'string' },
+              },
+              required: ['type', 'title', 'description'],
+            },
+            {
+              type: 'object',
+              description: 'Structure / Specs slide — detailed component specs with variants per country',
+              properties: {
+                type: { type: 'string', const: 'structure' },
+                title: { type: 'string' },
+                sectionLabel: { type: 'string' },
+                description: { type: 'string' },
+                specs: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      description: { type: 'string' },
+                      variants: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: { country: { type: 'string' }, flag: { type: 'string' }, value: { type: 'string' } },
+                          required: ['value'],
+                        },
+                      },
+                      note: { type: 'string' },
+                    },
+                    required: ['name', 'description'],
+                  },
+                },
+                imageNote: { type: 'string' },
+              },
+              required: ['type', 'title', 'specs'],
+            },
+            {
+              type: 'object',
+              description: 'Flow / Logic slide — navigation flows and decision trees',
+              properties: {
+                type: { type: 'string', const: 'flow' },
+                title: { type: 'string' },
+                sectionLabel: { type: 'string' },
+                description: { type: 'string' },
+                steps: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      label: { type: 'string' },
+                      type: { type: 'string', enum: ['screen', 'decision', 'action'] },
+                      note: { type: 'string' },
+                    },
+                    required: ['label'],
+                  },
+                },
+                branches: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { condition: { type: 'string' }, target: { type: 'string' } },
+                    required: ['condition', 'target'],
+                  },
+                },
+              },
+              required: ['type', 'title', 'steps'],
+            },
+            {
+              type: 'object',
+              description: 'Handoff slide — Figma links and implementation specs',
+              properties: {
+                type: { type: 'string', const: 'handoff' },
+                title: { type: 'string' },
+                country: { type: 'string' },
+                figmaLinks: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { label: { type: 'string' }, url: { type: 'string' } },
+                    required: ['label', 'url'],
+                  },
+                },
+                specs: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { label: { type: 'string' }, value: { type: 'string' } },
+                    required: ['label', 'value'],
+                  },
+                },
+              },
+              required: ['type', 'title'],
+            },
+            {
+              type: 'object',
+              description: 'Section break — yellow slide with large title, used before each major section',
+              properties: {
+                type: { type: 'string', const: 'section' },
+                number: { type: 'string', description: 'Section number, zero-padded (ex: "01")' },
+                title: { type: 'string', description: 'Section name (ex: "CHO em passos")' },
+                subtitle: { type: 'string', description: 'Sub-topic (ex: "Visão geral")' },
+                bullets: { type: 'array', items: { type: 'string' }, description: 'Navigable sub-topics (ex: "Anatomia →")' },
+              },
+              required: ['type', 'number', 'title', 'subtitle', 'bullets'],
+            },
+            {
+              type: 'object',
+              description: 'Dual structure slide — two screen variants side by side with annotations',
+              properties: {
+                type: { type: 'string', const: 'structure_dual' },
+                title: { type: 'string' },
+                subtitle: { type: 'string' },
+                leftLabel: { type: 'string', description: 'Label for left variant (ex: "Caso típico")' },
+                rightLabel: { type: 'string', description: 'Label for right variant (ex: "Com scroll")' },
+                leftAnnotations: {
+                  type: 'array',
+                  items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' } }, required: ['name', 'description'] },
+                },
+                rightAnnotations: {
+                  type: 'array',
+                  items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' } }, required: ['name', 'description'] },
+                },
+              },
+              required: ['type', 'title', 'leftAnnotations', 'rightAnnotations'],
+            },
+            {
+              type: 'object',
+              description: 'Component focus — gray slide with breadcrumb, drills into a single UI component',
+              properties: {
+                type: { type: 'string', const: 'component_focus' },
+                breadcrumb: { type: 'array', items: { type: 'string' }, description: 'Navigation path (ex: ["Estrutura", "Medios", "Header"])' },
+                screenName: { type: 'string', description: 'Name of the screen (ex: "Listado de medios")' },
+                componentTitle: { type: 'string', description: 'Component name with number (ex: "1. Tarea (Título)")' },
+                description: { type: 'string' },
+                annotation: {
+                  type: 'object',
+                  properties: { title: { type: 'string' }, description: { type: 'string' } },
+                  required: ['title', 'description'],
+                },
+                highlightPosition: { type: 'string', enum: ['top', 'middle', 'bottom'] },
+              },
+              required: ['type', 'breadcrumb', 'screenName', 'componentTitle', 'description', 'annotation'],
+            },
           ],
         },
       },
@@ -610,8 +844,8 @@ export default async function handler(req: Request): Promise<Response> {
 
           const stream = await Promise.race([
             client.messages.stream({
-              model: 'claude-sonnet-4-6',
-              max_tokens: 8096,
+              model: 'claude-opus-4-6',
+              max_tokens: 16000,
               system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool

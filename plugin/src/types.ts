@@ -47,8 +47,20 @@ export interface BehaviorSlide {
 export interface DoDontSlide {
   type: 'do_dont'
   title: string
-  do: string[]
-  dont: string[]
+  // Simple variant (general best practices)
+  do?: string[]
+  dont?: string[]
+  // Component variant (detailed, with mockup columns)
+  componentName?: string
+  description?: string
+  variants?: {
+    label: string        // "Sem ticket", "Com ticket"
+    isGood: boolean
+    blocks: { name: string; height: number; highlighted?: boolean }[]
+    annotation?: string  // note shown next to this variant
+  }[]
+  annotations?: { title: string; description: string }[]
+  dontRule?: string      // rule shown on Don't section
 }
 export interface WordingSlide {
   type: 'wording'
@@ -97,11 +109,93 @@ export interface IndexSlide {
   }[]
 }
 
+// ─── Novos tipos v2 ─────────────────────────────────────────
+
+export interface OverviewSlide {
+  type: 'overview'
+  title: string
+  sectionLabel?: string
+  description: string
+  bullets?: string[]
+  links?: { label: string; arrow?: boolean }[]
+  imageNote?: string
+}
+
+export interface StructureSlide {
+  type: 'structure'
+  title: string
+  sectionLabel?: string
+  description?: string
+  specs: {
+    name: string
+    description: string
+    variants?: { country?: string; flag?: string; value: string }[]
+    note?: string
+  }[]
+  imageNote?: string
+}
+
+export interface FlowSlide {
+  type: 'flow'
+  title: string
+  sectionLabel?: string
+  description?: string
+  steps: {
+    label: string
+    type?: 'screen' | 'decision' | 'action'
+    note?: string
+  }[]
+  branches?: { condition: string; target: string }[]
+}
+
+export interface HandoffSlide {
+  type: 'handoff'
+  title: string
+  country?: string
+  figmaLinks?: { label: string; url: string }[]
+  specs?: { label: string; value: string }[]
+}
+
+// ─── Andes X template types ──────────────────────────────────
+
+/** Yellow section-break slide: number + big title + subtitle + nav bullets + mockup area */
+export interface SectionSlide {
+  type: 'section'
+  number: string           // "01", "02" …
+  title: string            // e.g. "CHO em passos"
+  subtitle: string         // e.g. "Visão geral"
+  bullets: string[]        // navigation items: "Antes e depois →"
+}
+
+/** Deep-dive into one component: breadcrumb + title + description + annotated mockup */
+export interface ComponentFocusSlide {
+  type: 'component_focus'
+  breadcrumb: string[]     // ["Estrutura", "Listado de meios", "Tarea"]
+  screenName: string       // screen/section name: "Listado de meios"
+  componentTitle: string   // "1. Tarea (Título)"
+  description: string
+  annotation: { title: string; description: string }
+  highlightPosition?: 'top' | 'middle' | 'bottom'  // where to highlight in the mockup
+}
+
+/** Structure slide with 2 mockup variants (typical vs scroll) */
+export interface StructureDualSlide {
+  type: 'structure_dual'
+  title: string
+  subtitle?: string
+  leftLabel?: string       // "Caso típico"
+  rightLabel?: string      // "Caso com scroll"
+  leftAnnotations:  { name: string; description: string }[]
+  rightAnnotations: { name: string; description: string }[]
+}
+
 export type Slide =
   | CoverSlide | ObjectiveSlide | GlossarySlide | AnatomySlide
   | UseCaseMapSlide | UseCaseSlide | BehaviorSlide | DoDontSlide
   | WordingSlide | ContactSlide
   | BeforeAfterSlide | MicrointeractionSlide | IndexSlide
+  | OverviewSlide | StructureSlide | FlowSlide | HandoffSlide
+  | SectionSlide | ComponentFocusSlide | StructureDualSlide
 
 export interface GuidelineData {
   title: string

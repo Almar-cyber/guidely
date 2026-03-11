@@ -8,13 +8,16 @@ function corsHeaders(): Record<string, string> {
   }
 }
 
-const CONTENT_PAGE_SKIP = /^(↓|←|→|↑|--|==|MASTER|COMPONENT|LIBRARY|\s*$)/i
-const MAX_PAGES = 6
-const MAX_TOP_FRAMES_PER_PAGE = 12
-const MAX_LINES_PER_PAGE = 140
-const MAX_PAGE_CHARS = 14000
+// Skip only navigation/utility pages — keep all content pages including handoff pages
+const CONTENT_PAGE_SKIP = /^(↓|←|→|↑|==|\s*$)/i
+const MAX_PAGES = 25               // projetos com até 25 páginas
+const MAX_TOP_FRAMES_PER_PAGE = 20 // até 20 frames por página
+const MAX_LINES_PER_PAGE = 160
+const MAX_PAGE_CHARS = 16000
 const MAX_LINE_CHARS = 260
-const MAX_CONTEXT_CHARS = 90000
+const MAX_CONTEXT_CHARS = 120000
+const FILE_STRUCTURE_TIMEOUT_MS = 12000  // leitura da estrutura do arquivo
+const NODES_BATCH_TIMEOUT_MS = 8000      // por página em paralelo
 
 interface FigmaNode {
   id: string
@@ -55,6 +58,21 @@ function extractText(node: FigmaNode, depth = 0): string[] {
       results.push(clean)
     }
   } else if (!skip.includes(node.type) && node.name && depth < 8) {
+    // Include meaningful frame/section/component names for structural context
+    const nameClean = node.name.trim()
+    const isStructural = node.type === 'FRAME' || node.type === 'SECTION' || node.type === 'COMPONENT' || node.type === 'COMPONENT_SET' || node.type === 'GROUP'
+    if (
+      isStructural &&
+      depth <= 3 &&
+      nameClean.length > 2 &&
+      !nameClean.match(/^\d+$/) &&
+      !nameClean.match(/^Frame \d/) &&
+      !nameClean.match(/^Group \d/) &&
+      !nameClean.match(/^Rectangle/) &&
+      !nameClean.startsWith('_')
+    ) {
+      results.push(`[${nameClean}]`)
+    }
     for (const child of node.children ?? []) {
       results.push(...extractText(child, depth + 1))
     }
@@ -72,11 +90,18 @@ function deduplicateTexts(texts: string[]): string[] {
   })
 }
 
+function figmaFetch(url: string, token: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, {
+    headers: { 'X-Figma-Token': token },
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer))
+}
+
 async function readFigmaFile(token: string, fileId: string): Promise<string> {
   // 1. Get file structure (pages + top-level frames)
-  const fileRes = await fetch(`https://api.figma.com/v1/files/${fileId}?depth=2`, {
-    headers: { 'X-Figma-Token': token },
-  })
+  const fileRes = await figmaFetch(`https://api.figma.com/v1/files/${fileId}?depth=2`, token, FILE_STRUCTURE_TIMEOUT_MS)
 
   if (!fileRes.ok) {
     const err = await fileRes.json() as { err?: string; status?: number }
@@ -95,48 +120,57 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
     (page) => !CONTENT_PAGE_SKIP.test(page.name)
   )
 
-  // 3. For each content page, get nodes at depth 8 to extract text
-  for (const page of contentPages.slice(0, MAX_PAGES)) {
+  // 3. Fetch all pages in parallel — each with individual timeout so slow pages don't block others
+  async function fetchPage(page: FigmaNode): Promise<{ name: string; lines: string[] } | null> {
     const topFrames = (page.children ?? []).slice(0, MAX_TOP_FRAMES_PER_PAGE)
-    if (topFrames.length === 0) continue
+    if (topFrames.length === 0) return null
 
     const ids = topFrames.map((f) => f.id).join(',')
-    const nodesRes = await fetch(
-      `https://api.figma.com/v1/files/${fileId}/nodes?ids=${ids}&depth=8`,
-      { headers: { 'X-Figma-Token': token } }
-    )
+    let nodesRes: Response
+    try {
+      nodesRes = await figmaFetch(
+        `https://api.figma.com/v1/files/${fileId}/nodes?ids=${ids}&depth=4`,
+        token,
+        NODES_BATCH_TIMEOUT_MS
+      )
+    } catch {
+      return null // timeout — skip page gracefully
+    }
 
-    if (!nodesRes.ok) continue
+    if (!nodesRes.ok) return null
 
     const nodesData = await nodesRes.json() as { nodes: Record<string, { document: FigmaNode }> }
     const pageTexts: string[] = []
 
     for (const nodeData of Object.values(nodesData.nodes)) {
-      const texts = extractText(nodeData.document)
-      pageTexts.push(...texts)
+      pageTexts.push(...extractText(nodeData.document))
     }
 
     const unique = deduplicateTexts(pageTexts).filter(
-      (t) =>
-        !t.startsWith('Loren ipsum') &&
-        !t.startsWith('[Descripción') &&
-        t !== 'Lorem' &&
-        t.length > 3
+      (t) => !t.startsWith('Loren ipsum') && !t.startsWith('[Descripción') && t !== 'Lorem' && t.length > 3
     )
 
     const limited: string[] = []
     let pageChars = 0
     for (const line of unique) {
       if (limited.length >= MAX_LINES_PER_PAGE) break
-      const nextSize = line.length + 1
-      if (pageChars + nextSize > MAX_PAGE_CHARS) break
+      if (pageChars + line.length + 1 > MAX_PAGE_CHARS) break
       limited.push(line)
-      pageChars += nextSize
+      pageChars += line.length + 1
     }
 
-    if (limited.length > 0) {
-      sections.push(`## Página: ${page.name}\n`)
-      sections.push(limited.join('\n'))
+    return limited.length > 0 ? { name: page.name, lines: limited } : null
+  }
+
+  // All pages run in parallel — total time ≈ NODES_BATCH_TIMEOUT_MS (not N × timeout)
+  const pageResults = await Promise.allSettled(
+    contentPages.slice(0, MAX_PAGES).map(fetchPage)
+  )
+
+  for (const result of pageResults) {
+    if (result.status === 'fulfilled' && result.value) {
+      sections.push(`## Página: ${result.value.name}\n`)
+      sections.push(result.value.lines.join('\n'))
       sections.push('')
     }
   }
