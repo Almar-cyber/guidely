@@ -268,6 +268,18 @@ The user asked to generate now. Call \`generate_guideline\` immediately — do N
 
 ${audienceSection}
 
+## SLIDES OBRIGATÓRIOS — nunca omitir, independente da audiência
+
+These slides MUST always appear in every generated guideline, regardless of audience:
+
+| Slide | Posição | Motivo |
+|-------|---------|--------|
+| **cover** | 1º slide | Identificação do guideline |
+| **index** | logo após objective | Navegação rápida — leitores precisam encontrar seções sem ler tudo |
+| **contact** | último slide | Referência para dúvidas |
+
+NEVER omit `index`. Even if the guideline has few slides (8–10), the index is required. It is NOT optional and NOT counted against the slide budget.
+
 ## Your process
 
 **When audience is specified** (stakeholders / designers / devs): generate the complete guideline immediately using the Figma context. Do NOT ask questions upfront — the designer can adjust via chat after seeing the result.
