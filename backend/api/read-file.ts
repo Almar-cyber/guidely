@@ -159,7 +159,12 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
       pageChars += line.length + 1
     }
 
-    return limited.length > 0 ? { name: page.name, lines: limited, frames: topFrames.map((f) => ({ id: f.id, name: f.name })) } : null
+    const framesList = topFrames.map((f) => ({ id: f.id, name: f.name }))
+    // Always return frames even if no text — visual-only pages still have exportable screens
+    if (limited.length === 0) {
+      return topFrames.length > 0 ? { name: page.name, lines: [], frames: framesList } : null
+    }
+    return { name: page.name, lines: limited, frames: framesList }
   }
 
   // All pages run in parallel — total time ≈ NODES_BATCH_TIMEOUT_MS (not N × timeout)
@@ -170,10 +175,12 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
   const allFrames: { id: string; name: string }[] = []
   for (const result of pageResults) {
     if (result.status === 'fulfilled' && result.value) {
-      sections.push(`## Página: ${result.value.name}\n`)
-      sections.push(result.value.lines.join('\n'))
-      sections.push('')
       allFrames.push(...result.value.frames)
+      if (result.value.lines.length > 0) {
+        sections.push(`## Página: ${result.value.name}\n`)
+        sections.push(result.value.lines.join('\n'))
+        sections.push('')
+      }
     }
   }
 

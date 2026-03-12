@@ -617,7 +617,6 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                   required: ['label', 'points'],
                 },
                 imageNote: { type: 'string' },
-                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section' },
               },
               required: ['type', 'title', 'before', 'after'],
             },

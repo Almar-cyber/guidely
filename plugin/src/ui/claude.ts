@@ -278,11 +278,14 @@ export async function exportFigmaImages(
 ): Promise<Record<string, number[]>> {
   if (!fileId || frameIds.length === 0) return {}
 
-  const idsParam = frameIds.join(',')
+  // Deduplicate IDs — same frame referenced by multiple slides
+  const uniqueIds = [...new Set(frameIds)]
+  // Raw join: Figma parses ids as literal CSV; encodeURIComponent would encode the comma as %2C which is not a separator
+  const idsParam = uniqueIds.join(',')
   let exportRes: Response
   try {
     exportRes = await fetch(
-      `https://api.figma.com/v1/images/${fileId}?ids=${encodeURIComponent(idsParam)}&format=png&scale=0.5`,
+      `https://api.figma.com/v1/images/${fileId}?ids=${idsParam}&format=png&scale=0.5`,
       { headers: { 'X-Figma-Token': token } }
     )
   } catch {

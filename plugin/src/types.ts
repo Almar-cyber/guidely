@@ -89,7 +89,6 @@ export interface BeforeAfterSlide {
   before: { label: string; points: string[] }
   after: { label: string; points: string[] }
   imageNote?: string
-  mockupFrameId?: string
 }
 
 export interface MicrointeractionSlide {
