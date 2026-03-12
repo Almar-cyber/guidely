@@ -380,7 +380,6 @@ export default function App() {
       }
       setAnalyzeStatus('done')
       setFigmaContext(context)
-      await new Promise((r) => setTimeout(r, 300))
       setAudience(null)
       setMessages([])
       setStep('questions')
@@ -531,8 +530,8 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId, abortSignal: abortController.signal, audience: audience ?? undefined })
-  }, [messages, isStreaming, figmaContext, anthropicKey, audience])
+    }, { requestId, abortSignal: abortController.signal, audience: audience ?? undefined, currentGuideline: guideline ?? undefined })
+  }, [messages, isStreaming, figmaContext, anthropicKey, audience, guideline])
 
   const handleBuildFigma = () => {
     if (!guideline || !guideline.slides?.length) {
@@ -585,6 +584,7 @@ export default function App() {
     streamAbortRef.current = null
     setStep('files')
     setAudience(null)
+    setFigmaContext('')
     setMessages([])
     setQuickOptions([])
     setGuideline(null)
@@ -948,7 +948,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <button className="btn-ghost btn" style={{ marginTop: 4 }} onClick={() => setStep('files')}>
+            <button className="btn-ghost btn" style={{ marginTop: 4 }} onClick={() => { setFigmaContext(''); setStep('files') }}>
               <ArrowLeft size={13} /> Voltar
             </button>
           </div>
@@ -972,9 +972,9 @@ export default function App() {
                 <button
                   className="link"
                   style={{ marginLeft: 'auto', fontSize: 11 }}
-                  onClick={() => { cancelStream(); setAudience(null); setMessages([]) }}
+                  onClick={() => { cancelStream(); setAudience(null); setMessages([]); setGuideline(null) }}
                 >
-                  Trocar
+                  Trocar audiência
                 </button>
               </div>
             )}

@@ -34,7 +34,7 @@ function extractTextFromMessageContent(content: unknown): string {
     .trim()
 }
 
-function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
+function shouldForceGuidelineTool(messages: Anthropic.MessageParam[], isAdjustMode: boolean): boolean {
   const lastUser = [...messages]
     .reverse()
     .find((msg) => msg.role === 'user')
@@ -47,10 +47,19 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
   const explicitNegative = /\b(?:não|nao|not)\b[^.!?\n]{0,24}\b(?:gerar|gere|generate|finalizar|concluir|criar)\b/i
   if (explicitNegative.test(text)) return false
 
-  // Also force when audience is set and initial message asks to generate
+  // Initial audience-based generation
   if (/gere o guideline completo agora/i.test(text)) return true
 
-  return /(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)
+  // Explicit generation keywords
+  if (/(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)) return true
+
+  // In adjustment mode, any modification request should force re-generation
+  if (isAdjustMode) {
+    const adjustKeywords = /\b(adiciona|adicion|troca|muda|mude|coloca|coloque|remove|retira|tira|altera|alter|modifica|edita|inclui|exclui|acrescenta|adicione|tire|remov|corrig|expande|resumo|simplif|reescrev|renomei|renomea|reorden|reorganiz|apaga|deleta)\b/i
+    if (adjustKeywords.test(text)) return true
+  }
+
+  return false
 }
 
 const MAX_CONTEXT_CHARS = 180000
@@ -224,11 +233,16 @@ Você está gerando um guideline para DESENVOLVEDORES. Foque em especificações
   return ''
 }
 
-function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, audience?: Audience): string {
+function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, audience?: Audience, currentGuideline?: unknown): string {
   const audienceSection = buildAudienceSection(audience)
+  const adjustSection = currentGuideline
+    ? `\n## Current guideline (adjust mode)\n\nThe designer has already generated the following guideline and wants to adjust it. Use it as the base — apply the requested changes and call \`generate_guideline\` with the full updated structure.\n\n<current_guideline>\n${JSON.stringify(currentGuideline, null, 2)}\n</current_guideline>\n`
+    : ''
   return `You are a UX Documentation Specialist at Mercado Pago, expert in creating complete guidelines for leadership and stakeholders following the Andes X design system.
 
 ${figmaContext ? `You have already read the designer's Figma files. Here is the extracted content:\n\n<figma_content>\n${figmaContext}\n</figma_content>\n\nUse this content as the primary source for generating the guideline. Only ask questions about information NOT clearly present in the Figma content.` : ''}
+
+${adjustSection}
 
 ${forceGenerationNow ? `## Generation mode (strict)
 
@@ -920,18 +934,20 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401)
     }
 
-    const { messages, figmaContext = '', requestId, audience } = await req.json() as {
+    const { messages, figmaContext = '', requestId, audience, currentGuideline } = await req.json() as {
       messages: Anthropic.MessageParam[]
       figmaContext?: string
       requestId?: string
       audience?: 'stakeholders' | 'designers' | 'devs'
+      currentGuideline?: unknown  // guideline previously generated — injected as context in adjust mode
     }
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return jsonResponse({ error: 'Payload inválido: messages é obrigatório.' }, 400)
     }
 
-    const forceGuidelineTool = shouldForceGuidelineTool(messages)
+    const isAdjustMode = Boolean(currentGuideline)
+    const forceGuidelineTool = shouldForceGuidelineTool(messages, isAdjustMode)
     const compactedMessages = compactMessages(
       messages,
       forceGuidelineTool ? MAX_MESSAGES_FOR_FORCED_GENERATION : MAX_MESSAGES
@@ -969,7 +985,7 @@ export default async function handler(req: Request): Promise<Response> {
               model: 'claude-sonnet-4-6',
               max_tokens: 24000,
               thinking: { type: 'enabled', budget_tokens: 8000 },
-              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, audience),
+              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, audience, currentGuideline),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool
                 ? { type: 'tool', name: 'generate_guideline' }
