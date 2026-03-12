@@ -47,6 +47,9 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[]): boolean {
   const explicitNegative = /\b(?:não|nao|not)\b[^.!?\n]{0,24}\b(?:gerar|gere|generate|finalizar|concluir|criar)\b/i
   if (explicitNegative.test(text)) return false
 
+  // Also force when audience is set and initial message asks to generate
+  if (/gere o guideline completo agora/i.test(text)) return true
+
   return /(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)
 }
 
@@ -229,32 +232,29 @@ ${figmaContext ? `You have already read the designer's Figma files. Here is the 
 
 ${forceGenerationNow ? `## Generation mode (strict)
 
-The user explicitly asked to generate now.
+The user asked to generate now. Call \`generate_guideline\` immediately — do NOT ask any questions.
 
-- Call \`generate_guideline\` in this response.
-- Do NOT ask additional questions.
-- **IMPORTANT: Keep the total number of slides between 10 and 25.** For simple components aim for 10–15; for complex ones (multiple CDUs, flows, specs) up to 25. Merge only if content is truly redundant.
-- **Fill ALL fields completely** — do NOT use "A confirmar" or empty strings. Extract everything from the Figma context. If something is unclear, infer from context.
+- **Respect the audience slide rules above** (prioritize/omit slides exactly as instructed for the selected audience).
+- **Fill ALL fields completely** — no "A confirmar", no empty strings. Infer from Figma context when explicit data is missing.
 - For each slide type, populate EVERY optional field that adds value: description, imageNote, note, rationale, variants, countries, bullets, specs, links.
-- Lists: include as many items as needed to be complete (no artificial limits). Every CDU, every behavior state, every wording variant per country.
-- "imageNote" is mandatory on anatomy, use_case, behavior, before_after, microinteraction slides — describe exactly what screenshot to insert.
-- Wording slides: always include variants for each applicable country with exact UI copy strings.
+- Lists: as many items as needed — every CDU, every behavior state, every wording variant per country.
+- "imageNote" is mandatory on anatomy, use_case, behavior, before_after, microinteraction slides.
+- Wording slides: include variants for each applicable country with exact UI copy strings.
 - Behavior slides: enumerate ALL states found in Figma (zero, loaded, focus, error, disabled, etc.).
+- Slide count: follow the audience recommendation (stakeholders: 10–14 · designers: 15–25 · devs: 12–18). If no audience, aim for 12–20.
 ` : ''}
 
 ${audienceSection}
 
 ## Your process
 
-1. Greet briefly and confirm what you found in the files (if context provided).
-2. Ask **2–4 focused questions** — one or two at a time — to fill gaps not covered by the Figma content:
-   - Countries/sites this applies to (MLB 🇧🇷, MLA 🇦🇷, MLM 🇲🇽)
-   - Team name and version
-   - Any use cases or behaviors NOT visible in the Figma file
-   - Any specific wording/error rules
-   - Do's and Don'ts the designer wants to document
-3. When you have enough information (usually after 2–4 exchanges), call \`generate_guideline\`.
-4. If the designer says "gerar", "generate", "pronto" or similar → generate immediately.
+**When audience is specified** (stakeholders / designers / devs): generate the complete guideline immediately using the Figma context. Do NOT ask questions upfront — the designer can adjust via chat after seeing the result.
+
+**When no audience is specified**: ask 1–2 focused questions to fill critical gaps (countries, team name), then generate.
+
+If the designer asks to adjust after generation (e.g. "adiciona um slide de X", "troca o título", "remove o wording"): apply the change and call \`generate_guideline\` again with the updated content.
+
+If the designer says "gerar", "generate", "pronto" or similar → generate immediately.
 
 ## Quick reply options (IMPORTANT)
 

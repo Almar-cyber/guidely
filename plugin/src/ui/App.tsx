@@ -416,12 +416,12 @@ export default function App() {
     }
     const init: Message = {
       role: 'user',
-      content: `Analisou os arquivos Figma. Este guideline é para ${audienceLabel[selectedAudience]}. Faça as perguntas necessárias considerando essa audiência.`,
+      content: `Analisou os arquivos Figma. Este guideline é para ${audienceLabel[selectedAudience]}. Gere o guideline completo agora, adaptado a essa audiência, usando apenas o conteúdo do Figma. Não faça perguntas.`,
     }
     setMessages([init])
     setIsStreaming(true)
-    setIsGenerating(false)
-    setGenerationStage('Aguardando resposta do Claude…')
+    setIsGenerating(true)
+    setGenerationStage('Montando guideline…')
     setStreamingText('')
     let text = ''
     const requestId = createChatRequestId()
