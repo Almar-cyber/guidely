@@ -966,15 +966,16 @@ export default async function handler(req: Request): Promise<Response> {
 
           const stream = await Promise.race([
             client.messages.stream({
-              model: 'claude-opus-4-6',
-              max_tokens: 16000,
+              model: 'claude-sonnet-4-6',
+              max_tokens: 24000,
+              thinking: { type: 'enabled', budget_tokens: 8000 },
               system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, audience),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool
                 ? { type: 'tool', name: 'generate_guideline' }
                 : { type: 'auto' },
               messages: compactedMessages,
-            }),
+            } as Parameters<typeof client.messages.stream>[0]),
             initTimeoutPromise,
           ]) as Awaited<ReturnType<typeof client.messages.stream>>
 
