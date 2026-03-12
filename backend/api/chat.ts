@@ -115,128 +115,9 @@ function compactMessages(messages: Anthropic.MessageParam[], maxMessages = MAX_M
   }))
 }
 
-type Audience = 'stakeholders' | 'designers' | 'devs' | undefined
-
-function buildAudienceSection(audience: Audience): string {
-  if (!audience) return ''
-
-  if (audience === 'stakeholders') {
-    return `
-## Audiência: Lideranças / Stakeholders
-
-Você está gerando um guideline para LIDERANÇAS E STAKEHOLDERS. Adapte todo o conteúdo e as perguntas a esta audiência.
-
-### Slides a PRIORIZAR:
-- **cover** — título impactante, subtítulo que comunica o valor do componente
-- **objective** — 3 parágrafos: o que é, por que existe (impacto no negócio), quem é dono
-- **index** — OBRIGATÓRIO: índice das seções do guideline para navegação rápida (máx. 5 seções)
-- **section** — divisores de seção obrigatórios para organização
-- **anatomy** — simplificado: nomes dos componentes sem specs técnicas
-- **use_case_map** — tabela geral de CDUs (quais casos existem)
-- **1–2 use_case** — apenas os CDUs mais importantes e de maior impacto
-- **do_dont** — boas práticas de negócio e de UX, não regras técnicas
-- **before_after** — se houver evolução de versão (Andes Legacy → Andes X)
-- **contact** — canal Slack e link do Figma
-
-### Slides a OMITIR ou SIMPLIFICAR:
-- behavior: incluir APENAS se o comportamento tiver impacto visível para o negócio (ex: estado de erro crítico)
-- wording: omitir tabelas detalhadas; citar no máximo 1–2 frases de erro mais importantes
-- microinteraction: omitir
-- handoff: omitir
-- structure / structure_dual / component_focus: omitir detalhes técnicos de specs
-
-### Tom e linguagem:
-- Executivo, direto, orientado a impacto de produto e negócio
-- Foco no "o que é" e "por que existe" — não no "como implementar"
-- Sem jargões técnicos de front-end ou design system
-- Total recomendado: **10–14 slides**
-
-### Perguntas a fazer ao designer:
-- Qual o impacto de produto deste componente? (ex: está no fluxo de pagamento de X milhões de usuários)
-- Há alguma mudança de versão a destacar (antes/depois)?
-- Quais os 2–3 casos de uso mais importantes para a liderança entender?
-`
-  }
-
-  if (audience === 'designers') {
-    return `
-## Audiência: Designers
-
-Você está gerando um guideline para DESIGNERS. Inclua máximo de detalhe visual, de uso e de design system.
-
-### Slides a PRIORIZAR (todos relevantes):
-- **cover, objective, index, section, glossary** — estrutura completa (index é OBRIGATÓRIO para navegação rápida)
-- **anatomy** — detalhado com required/optional, specs de espaçamento
-- **component_focus** — um slide por componente principal encontrado no Figma
-- **structure_dual** — variações visuais lado a lado sempre que houver 2 estados
-- **use_case_map + use_case** — todos os CDUs identificados no Figma
-- **behavior** — todos os estados visuais (zero, focus, erro, disabled, loading, etc.)
-- **do_dont** — regras visuais específicas com exemplos concretos ✅/❌
-- **before_after** — se houver migração de versão (Andes Legacy → Andes X)
-- **microinteraction** — animações, cursores, transições
-- **wording** — copy completo por país com variações e rationale
-- **overview** — contexto rico de cada seção
-- **contact** — canal e links
-
-### Ênfase de conteúdo:
-- Nomear os componentes EXATAMENTE como aparecem no Figma e no design system
-- imageNote obrigatório em todos os slides anatomy, use_case, behavior, structure
-- Detalhar specs visuais: espaçamentos, tipografia, estados de cor
-- Referenciar tokens Andes X quando aplicável (ex: "ax-color/yellow/500")
-- Total recomendado: **15–25 slides**
-
-### Perguntas a fazer ao designer:
-- Há alguma animação ou microinteração documentada no Figma?
-- Quais são as variações visuais principais (ex: sem scroll vs. com scroll)?
-- Há estados especiais por país (ex: MLA usa moeda diferente de MLB)?
-- Existe versão anterior? Há mudanças visuais a documentar?
-`
-  }
-
-  if (audience === 'devs') {
-    return `
-## Audiência: Desenvolvedores
-
-Você está gerando um guideline para DESENVOLVEDORES. Foque em especificações técnicas de implementação.
-
-### Slides a PRIORIZAR:
-- **cover, objective, index, glossary** — estrutura base (index é OBRIGATÓRIO para navegação rápida entre seções)
-- **anatomy** — TODOS os componentes com required/optional claramente marcados, incluindo nomes de tokens
-- **behavior** — TODOS os estados: zero, loading, focus, sufixo, erro, disabled, vazio, preenchido
-- **wording** — tabelas completas de copy com variantes por país, formato exato de strings e placeholders
-- **handoff** — links de Figma por país + specs técnicos (owner, versão, token name)
-- **structure** — specs com valores exatos e variantes por país (ex: "Escolha como fazer seu Pix" para MLB)
-- **use_case** — detalhar quais componentes são renderizados em cada estado/CDU
-- **flow** — lógica de navegação e decision trees
-- **do_dont** — regras técnicas: o que NUNCA fazer na implementação
-
-### Slides a OMITIR:
-- before_after: omitir, a menos que seja migração de API/token
-- microinteraction: incluir APENAS se tiver specs de timing específicos (ex: duração em ms)
-- overview: omitir
-
-### Tom e linguagem:
-- Técnico e preciso — como uma especificação de engenharia
-- Usar nomes exatos dos componentes no design system Andes X
-- Formatar comportamentos como: "SE [condição] → ENTÃO [comportamento]"
-- Incluir valores absolutos quando disponíveis (px, %, ms, tokens)
-- Total recomendado: **12–18 slides**
-
-### Perguntas a fazer ao designer:
-- Qual o nome exato do componente no Andes X? Já está disponível ou é novo?
-- Há estados de loading ou skeleton a implementar?
-- Existem regras de validação de valor (mínimo/máximo) por país?
-- Quais são os tokens exatos de cor e tipografia usados?
-`
-  }
-
-  return ''
-}
-
 const MAX_GUIDELINE_CHARS = 60000
 
-function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, audience?: Audience, currentGuideline?: unknown): string {
-  const audienceSection = buildAudienceSection(audience)
+function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, currentGuideline?: unknown): string {
   let adjustSection = ''
   if (currentGuideline) {
     let guidelineJson = JSON.stringify(currentGuideline, null, 2)
@@ -263,12 +144,10 @@ The user asked to generate now. Call \`generate_guideline\` immediately — do N
 - Wording slides: include variants for each applicable country with exact UI copy strings.
 - Behavior slides: enumerate ALL states found in Figma (zero, loaded, focus, error, disabled, etc.).
 - Slide count: follow the audience recommendation (stakeholders: 10–14 · designers: 15–25 · devs: 12–18). If no audience, aim for 12–20.
-- **index slide is MANDATORY for every audience** — always include it after objective so readers can navigate the guideline quickly.
+- **index slide is MANDATORY** — always include it after objective so readers can navigate the guideline quickly.
 ` : ''}
 
-${audienceSection}
-
-## SLIDES OBRIGATÓRIOS — nunca omitir, independente da audiência
+## SLIDES OBRIGATÓRIOS — nunca omitir
 
 These slides MUST always appear in every generated guideline, regardless of audience:
 
@@ -282,13 +161,10 @@ NEVER omit `index`. Even if the guideline has few slides (8–10), the index is 
 
 ## Your process
 
-**When audience is specified** (stakeholders / designers / devs): generate the complete guideline immediately using the Figma context. Do NOT ask questions upfront — the designer can adjust via chat after seeing the result.
-
-**When no audience is specified**: ask 1–2 focused questions to fill critical gaps (countries, team name), then generate.
+1. **Ask 1–2 focused questions** to fill critical gaps (e.g. countries, target audience, team name). Only ask what is NOT clearly present in the Figma content.
+2. **Generate** when the designer answers or says "gerar", "generate", "pronto" or similar.
 
 If the designer asks to adjust after generation (e.g. "adiciona um slide de X", "troca o título", "remove o wording"): apply the change and call \`generate_guideline\` again with the updated content.
-
-If the designer says "gerar", "generate", "pronto" or similar → generate immediately.
 
 ## Quick reply options (IMPORTANT)
 
@@ -954,11 +830,10 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401)
     }
 
-    const { messages, figmaContext = '', requestId, audience, currentGuideline } = await req.json() as {
+    const { messages, figmaContext = '', requestId, currentGuideline } = await req.json() as {
       messages: Anthropic.MessageParam[]
       figmaContext?: string
       requestId?: string
-      audience?: 'stakeholders' | 'designers' | 'devs'
       currentGuideline?: unknown  // guideline previously generated — injected as context in adjust mode
     }
 
@@ -1006,7 +881,7 @@ export default async function handler(req: Request): Promise<Response> {
               max_tokens: 24000,
               // thinking is incompatible with forced tool_choice — only enable when tool_choice is auto
               ...(!forceGuidelineTool ? { thinking: { type: 'enabled', budget_tokens: 8000 } } : {}),
-              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, audience, currentGuideline),
+              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, currentGuideline),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool
                 ? { type: 'tool', name: 'generate_guideline' }
