@@ -59,7 +59,7 @@ function copyToClipboardFallback(text: string): void {
   document.body.removeChild(el)
 }
 import type { GuidelineData, Slide, PluginToUI } from '../types'
-import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
+import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message, type Audience } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
 
 function GeneratingIndicator() {
@@ -160,6 +160,7 @@ export default function App() {
   const [figmaContext, setFigmaContext] = useState('')
   const [analyzeError, setAnalyzeError] = useState('')
 
+  const [audience, setAudience] = useState<Audience | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [streamingText, setStreamingText] = useState('')
   const [chatInput, setChatInput] = useState('')
@@ -380,8 +381,9 @@ export default function App() {
       setAnalyzeStatus('done')
       setFigmaContext(context)
       await new Promise((r) => setTimeout(r, 300))
+      setAudience(null)
+      setMessages([])
       setStep('questions')
-      startConversation(context)
     } catch (err) {
       if (analyzeStageTimeoutRef.current) {
         clearTimeout(analyzeStageTimeoutRef.current)
@@ -402,12 +404,20 @@ export default function App() {
     setStreamingText('')
   }, [])
 
-  const startConversation = useCallback((context: string) => {
+  const startConversation = useCallback((context: string, selectedAudience: Audience) => {
     streamAbortRef.current?.abort()
     const abortController = new AbortController()
     streamAbortRef.current = abortController
 
-    const init: Message = { role: 'user', content: 'Analisou os arquivos Figma. Faça as perguntas necessárias para criar o guideline.' }
+    const audienceLabel: Record<Audience, string> = {
+      stakeholders: 'lideranças e stakeholders',
+      designers: 'designers',
+      devs: 'desenvolvedores',
+    }
+    const init: Message = {
+      role: 'user',
+      content: `Analisou os arquivos Figma. Este guideline é para ${audienceLabel[selectedAudience]}. Faça as perguntas necessárias considerando essa audiência.`,
+    }
     setMessages([init])
     setIsStreaming(true)
     setIsGenerating(false)
@@ -451,7 +461,7 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId, abortSignal: abortController.signal })
+    }, { requestId, abortSignal: abortController.signal, audience: selectedAudience })
   }, [anthropicKey])
 
   const sendMessage = useCallback((text: string) => {
@@ -521,8 +531,8 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId, abortSignal: abortController.signal })
-  }, [messages, isStreaming, figmaContext, anthropicKey])
+    }, { requestId, abortSignal: abortController.signal, audience: audience ?? undefined })
+  }, [messages, isStreaming, figmaContext, anthropicKey, audience])
 
   const handleBuildFigma = () => {
     if (!guideline || !guideline.slides?.length) {
@@ -574,6 +584,7 @@ export default function App() {
     streamAbortRef.current?.abort()
     streamAbortRef.current = null
     setStep('files')
+    setAudience(null)
     setMessages([])
     setQuickOptions([])
     setGuideline(null)
@@ -877,9 +888,96 @@ export default function App() {
       )}
 
       {/* ── Perguntas ── */}
-      {step === 'questions' && (
+      {step === 'questions' && !audience && (
+        <div className="scroll">
+          <div className="step">
+            <div className="step-title">Para quem é este guideline?</div>
+            <div className="step-sub">A IA adapta o conteúdo, as perguntas e a profundidade dos slides conforme a audiência.</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+              {([
+                {
+                  id: 'stakeholders' as Audience,
+                  icon: '🎯',
+                  label: 'Lideranças / Stakeholders',
+                  desc: 'Foco em impacto de produto e negócio. Slides essenciais, linguagem executiva, sem jargão técnico.',
+                  count: '10–14 slides',
+                },
+                {
+                  id: 'designers' as Audience,
+                  icon: '🎨',
+                  label: 'Designers',
+                  desc: 'Todos os detalhes visuais, estados, specs Andes X, microinterações e variações por país.',
+                  count: '15–25 slides',
+                },
+                {
+                  id: 'devs' as Audience,
+                  icon: '⚙️',
+                  label: 'Desenvolvedores',
+                  desc: 'Specs técnicas, todos os estados, copy completo por país, tokens e links de handoff.',
+                  count: '12–18 slides',
+                },
+              ] as const).map(({ id, icon, label, desc, count }) => (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setAudience(id)
+                    startConversation(figmaContext, id)
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    background: 'var(--ax-dark-100)',
+                    border: '1.5px solid var(--color-border)',
+                    borderRadius: 'var(--r)',
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-primary)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(67,75,228,0.06)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--ax-dark-100)' }}
+                >
+                  <span style={{ fontSize: 22, lineHeight: 1, marginTop: 2 }}>{icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>{label}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-3)', whiteSpace: 'nowrap', background: 'var(--color-border)', padding: '2px 6px', borderRadius: 4 }}>{count}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-2)', marginTop: 4, lineHeight: 1.5 }}>{desc}</div>
+                  </div>
+                  <ChevronRight size={14} color="var(--color-text-3)" style={{ marginTop: 4, flexShrink: 0 }} />
+                </button>
+              ))}
+            </div>
+            <button className="btn-ghost btn" style={{ marginTop: 4 }} onClick={() => setStep('files')}>
+              <ArrowLeft size={13} /> Voltar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'questions' && audience && (
         <div className="chat-layout">
           <div className="scroll">
+            {audience && (
+              <div style={{
+                padding: '8px 12px',
+                display: 'flex', alignItems: 'center', gap: 6,
+                borderBottom: '1px solid var(--color-border)',
+                fontSize: 11, color: 'var(--color-text-3)',
+              }}>
+                <span>Audiência:</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text-2)' }}>
+                  {audience === 'stakeholders' ? '🎯 Lideranças / Stakeholders' : audience === 'designers' ? '🎨 Designers' : '⚙️ Devs'}
+                </span>
+                <button
+                  className="link"
+                  style={{ marginLeft: 'auto', fontSize: 11 }}
+                  onClick={() => { cancelStream(); setAudience(null); setMessages([]) }}
+                >
+                  Trocar
+                </button>
+              </div>
+            )}
             {isStreaming && generationStage && (
               <div style={{ padding: '8px 12px 0', fontSize: 11, color: 'var(--color-text-3)' }}>
                 {generationStage}

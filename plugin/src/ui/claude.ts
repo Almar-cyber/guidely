@@ -255,9 +255,12 @@ export interface StreamCallbacks {
   onDone: () => void
 }
 
+export type Audience = 'stakeholders' | 'designers' | 'devs'
+
 export interface StreamChatOptions {
   requestId?: string
   abortSignal?: AbortSignal
+  audience?: Audience
 }
 
 function authHeaders(anthropicKey: string): Record<string, string> {
@@ -413,7 +416,7 @@ export async function streamChat(
     res = await fetch(`${BASE_URL}/api/chat`, {
       method: 'POST',
       headers: authHeaders(anthropicKey),
-      body: JSON.stringify({ messages, figmaContext: effectiveContext, requestId: options.requestId }),
+      body: JSON.stringify({ messages, figmaContext: effectiveContext, requestId: options.requestId, audience: options.audience }),
       signal: controller.signal,
     })
   } catch {
