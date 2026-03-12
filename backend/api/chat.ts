@@ -991,7 +991,8 @@ export default async function handler(req: Request): Promise<Response> {
             client.messages.stream({
               model: 'claude-sonnet-4-6',
               max_tokens: 24000,
-              thinking: { type: 'enabled', budget_tokens: 8000 },
+              // thinking is incompatible with forced tool_choice — only enable when tool_choice is auto
+              ...(!forceGuidelineTool ? { thinking: { type: 'enabled', budget_tokens: 8000 } } : {}),
               system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, audience, currentGuideline),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool
