@@ -297,21 +297,46 @@ function makeTag(text: string): FrameNode {
   return tag
 }
 
-/** Adds an imageNote as a 📸 callout at the bottom of a content frame */
+/** Adds an imageNote as a prominent 📸 banner at the bottom of a content frame */
 function appendImageNote(content: FrameNode, imageNote: string | undefined): void {
   if (!imageNote) return
   const note = makeFrame('ImageNote')
-  setAutoLayout(note, 'HORIZONTAL', 8, 10, 10, 16, 16)
-  note.fills = solid(COLORS.bgDetail)
-  note.cornerRadius = 6
+  setAutoLayout(note, 'HORIZONTAL', 14, 18, 18, 24, 24)
+  note.fills = solid(COLORS.bgSection)
+  note.cornerRadius = 10
+  note.strokeWeight = 1
+  note.strokes = solid(COLORS.border)
+  note.strokeAlign = 'INSIDE'
   note.primaryAxisSizingMode = 'AUTO'
-  note.counterAxisSizingMode = 'AUTO'
-  const emoji = makeText('📸', 14, FONTS.regular, COLORS.textPrimary)
-  note.appendChild(emoji)
+  note.counterAxisSizingMode = 'FIXED'
+  note.resize(SLIDE_WIDTH - PAD.slideH * 2, 1)
+  note.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
+
+  const emojiBox = makeFrame('EmojiBox')
+  setAutoLayout(emojiBox, 'HORIZONTAL', 0, 6, 6, 6, 6)
+  emojiBox.fills = solid(COLORS.border)
+  emojiBox.cornerRadius = 6
+  emojiBox.primaryAxisSizingMode = 'AUTO'
+  emojiBox.counterAxisSizingMode = 'AUTO'
+  emojiBox.appendChild(makeText('📸', 18, FONTS.regular, COLORS.textPrimary))
+  note.appendChild(emojiBox)
+
+  const col = makeFrame('NoteCol')
+  setAutoLayout(col, 'VERTICAL', 2, 0, 0, 0, 0)
+  col.fills = []
+  col.layoutGrow = 1
+  col.primaryAxisSizingMode = 'AUTO'
+  col.counterAxisSizingMode = 'AUTO'
+  const label = makeText('INSERIR IMAGEM', 11, FONTS.bold, COLORS.accent)
+  label.letterSpacing = { value: 1, unit: 'PIXELS' }
+  col.appendChild(label)
   const txt = makeText(imageNote, 14, FONTS.regular, COLORS.textSecondary)
   txt.lineHeight = { value: 150, unit: 'PERCENT' }
-  note.appendChild(txt)
-  content.appendChild(note)
+  txt.textAutoResize = 'HEIGHT'
+  appendFill(col, txt)
+  note.appendChild(col)
+
+  appendFill(content, note)
 }
 
 // ─────────────────────────────────────────────
@@ -362,18 +387,14 @@ function buildCoverSlide(slide: CoverSlide, index: number): FrameNode {
   content.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
   content.counterAxisAlignItems = 'MIN'
 
-  // Top label inside paddingTop space — use a HORIZONTAL row at very top
-  const topRow = makeFrame('TopRow')
-  setAutoLayout(topRow, 'HORIZONTAL', 0, 0, 0, 0, 0)
-  topRow.fills = []
-  topRow.counterAxisSizingMode = 'AUTO'
-  topRow.primaryAxisSizingMode = 'AUTO'
+  // Top label — positioned directly on the frame at y=74 (matches floating header position)
   const topLabel = makeText(
     `GUIDELINE - ${(slide.team ?? 'UX').toUpperCase()}`, 16, FONTS.bold, COLORS.textOnCover
   )
   topLabel.letterSpacing = { value: 2, unit: 'PIXELS' }
-  topRow.appendChild(topLabel)
-  content.appendChild(topRow)
+  frame.appendChild(topLabel)
+  topLabel.x = 97
+  topLabel.y = 74
 
   // White badge "GUIDELINE"
   const badge = makeFrame('Badge')
@@ -924,7 +945,7 @@ function buildUseCaseSlide(
   mockup.cornerRadius = 16
   mockup.primaryAxisSizingMode = 'FIXED'
   mockup.counterAxisSizingMode = 'FIXED'
-  mockup.resize(374, 700)
+  mockup.resize(480, 780)
 
   // Generate component blocks as colored regions inside the mockup
   const blockColors = [
@@ -932,13 +953,13 @@ function buildUseCaseSlide(
     COLORS.bgDetail, COLORS.bgComponent, COLORS.bgDetail, COLORS.bgComponent,
   ]
   const compCount = Math.max(slide.components.length, 3)
-  const baseH = Math.floor(700 / compCount)
+  const baseH = Math.floor(780 / compCount)
   slide.components.forEach((_, i) => {
     const block = makeFrame(`block-${i}`)
     block.fills = solid(blockColors[i % blockColors.length])
     block.primaryAxisSizingMode = 'FIXED'
     block.counterAxisSizingMode = 'FIXED'
-    block.resize(374, i === slide.components.length - 1 ? 700 - baseH * (compCount - 1) : baseH)
+    block.resize(480, i === slide.components.length - 1 ? 780 - baseH * (compCount - 1) : baseH)
     mockup.appendChild(block)
   })
   mainRow.appendChild(mockup)
@@ -954,7 +975,7 @@ function buildUseCaseSlide(
   annCol.primaryAxisSizingMode = 'FIXED'
   annCol.counterAxisSizingMode = 'AUTO'  // re-apply after resize()
 
-  const perCard = Math.floor(700 / Math.max(slide.components.length, 1))
+  const perCard = Math.floor(780 / Math.max(slide.components.length, 1))
   slide.components.forEach((comp, i) => {
     const annRow = makeFrame(`ann-${i}`)
     setAutoLayout(annRow, 'HORIZONTAL', 8, 0, 0, 0, 0)
@@ -962,6 +983,7 @@ function buildUseCaseSlide(
     annRow.primaryAxisSizingMode = 'FIXED'
     annRow.counterAxisSizingMode = 'FIXED'
     annRow.resize(1, perCard)
+
     annRow.counterAxisAlignItems = 'CENTER'
     annRow.clipsContent = false
 
@@ -1036,7 +1058,7 @@ function buildBehaviorSlide(
   content.fills = []
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
-  content.resize(SLIDE_WIDTH - 360, 100)
+  content.resize(SLIDE_WIDTH - 440, 100)
   content.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
 
   const sectionLabel = makeText('3 · Comportamentos', 12, FONTS.semiBold, COLORS.accent)
@@ -1067,7 +1089,7 @@ function buildBehaviorSlide(
   tHead.layoutMode = 'HORIZONTAL'
   tHead.primaryAxisSizingMode = 'FIXED'
   tHead.counterAxisSizingMode = 'AUTO'
-  tHead.resize(SLIDE_WIDTH - PAD.slideH * 2 - 360, 1)
+  tHead.resize(SLIDE_WIDTH - PAD.slideH * 2 - 440, 1)
   tHead.counterAxisSizingMode = 'AUTO'  // re-apply after resize()
   tHead.fills = solid(COLORS.bgDark)
   tHead.paddingLeft = 16
@@ -1101,7 +1123,7 @@ function buildBehaviorSlide(
     tRow.paddingRight = 16
     tRow.paddingTop = 14
     tRow.paddingBottom = 14
-    tRow.resize(SLIDE_WIDTH - PAD.slideH * 2 - 360, 1)
+    tRow.resize(SLIDE_WIDTH - PAD.slideH * 2 - 440, 1)
     tRow.counterAxisSizingMode = 'AUTO'  // re-apply after resize()
 
     const labelCell = makeFrame('label cell')
@@ -1135,18 +1157,18 @@ function buildBehaviorSlide(
 
   // Mockup placeholder
   const mockup = makeFrame('Mockup')
-  mockup.resize(260, 520)
+  mockup.resize(360, 820)
   mockup.cornerRadius = 24
   mockup.fills = solid(COLORS.bgSection)
   mockup.strokes = solid(COLORS.border)
   mockup.strokeWeight = 1
-  const mockLabel = makeText(slide.imageNote ? '' : 'Inserir tela\nexemplo', 13, FONTS.regular, COLORS.textSecondary)
+  const mockLabel = makeText(slide.imageNote ? '📸' : 'Inserir tela\nexemplo', 22, FONTS.regular, COLORS.textSecondary)
   mockLabel.textAlignHorizontal = 'CENTER'
   mockup.appendChild(mockLabel)
-  mockLabel.x = 82
-  mockLabel.y = (520 - 50) / 2
-  mockup.x = SLIDE_WIDTH - PAD.slideH - 260
-  mockup.y = 120
+  mockLabel.x = (360 - 40) / 2
+  mockLabel.y = (820 - 50) / 2
+  mockup.x = SLIDE_WIDTH - PAD.slideH - 360
+  mockup.y = 130
 
   frame.appendChild(content)
   frame.appendChild(mockup)
@@ -1465,7 +1487,7 @@ function buildMicrointeractionSlide(
   content.fills = []
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
-  content.resize(SLIDE_WIDTH - 320, 100)
+  content.resize(SLIDE_WIDTH - 420, 100)
   content.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
 
   const sectionLabel = makeText('4 · Microinterações', 12, FONTS.semiBold, COLORS.accent)
@@ -1506,18 +1528,18 @@ function buildMicrointeractionSlide(
 
   // Mockup placeholder
   const mockup = makeFrame('Mockup')
-  mockup.resize(260, 480)
+  mockup.resize(360, 820)
   mockup.cornerRadius = 24
   mockup.fills = solid(COLORS.bgSection)
   mockup.strokes = solid(COLORS.border)
   mockup.strokeWeight = 1
-  const mockLabel = makeText(slide.imageNote ?? 'Inserir vídeo\nou protótipo', 13, FONTS.regular, COLORS.textSecondary)
+  const mockLabel = makeText(slide.imageNote ? '📸' : 'Inserir vídeo\nou protótipo', 22, FONTS.regular, COLORS.textSecondary)
   mockLabel.textAlignHorizontal = 'CENTER'
   mockup.appendChild(mockLabel)
-  mockLabel.x = 82
-  mockLabel.y = (480 - 50) / 2
-  mockup.x = SLIDE_WIDTH - PAD.slideH - 260
-  mockup.y = 120
+  mockLabel.x = (360 - 40) / 2
+  mockLabel.y = (820 - 50) / 2
+  mockup.x = SLIDE_WIDTH - PAD.slideH - 360
+  mockup.y = 130
 
   frame.appendChild(content)
   frame.appendChild(mockup)
@@ -1718,17 +1740,17 @@ function buildOverviewSlide(
 
   // Right column — mockup placeholder
   const mockup = makeFrame('Mockup')
-  mockup.resize(320, 640)
+  mockup.resize(460, 800)
   mockup.cornerRadius = 24
   mockup.fills = solid(COLORS.bgSection)
   mockup.strokes = solid(COLORS.border)
   mockup.strokeWeight = 1
 
-  const mockLabel = makeText(slide.imageNote ?? 'Inserir tela', 13, FONTS.regular, COLORS.textSecondary)
+  const mockLabel = makeText(slide.imageNote ? '📸' : 'Inserir tela', 22, FONTS.regular, COLORS.textSecondary)
   mockLabel.textAlignHorizontal = 'CENTER'
   mockup.appendChild(mockLabel)
-  mockLabel.x = 100
-  mockLabel.y = 300
+  mockLabel.x = 200
+  mockLabel.y = 380
   main.appendChild(mockup)
 
   frame.appendChild(main)
@@ -1864,15 +1886,15 @@ function buildStructureSlide(
 
     // Right — mockup placeholder
     const mockup = makeFrame('Mockup')
-    mockup.resize(320, 640)
+    mockup.resize(440, 800)
     mockup.cornerRadius = 24
     mockup.fills = solid(COLORS.bgSection)
     mockup.strokes = solid(COLORS.border)
     mockup.strokeWeight = 1
-    const mockLabel = makeText(slide.imageNote ?? 'Inserir tela\ndo componente', 13, FONTS.regular, COLORS.textSecondary)
+    const mockLabel = makeText(slide.imageNote ? '📸' : 'Inserir tela\ndo componente', 22, FONTS.regular, COLORS.textSecondary)
     mockLabel.textAlignHorizontal = 'CENTER'
-    mockLabel.x = 100
-    mockLabel.y = 300
+    mockLabel.x = 180
+    mockLabel.y = 380
     mockup.appendChild(mockLabel)
     main.appendChild(mockup)
 
@@ -1989,7 +2011,7 @@ function buildFlowSlide(
     }
   })
 
-  content.appendChild(stepsRow)
+  appendFill(content, stepsRow)
 
   // Branches / conditions
   if (slide.branches?.length) {

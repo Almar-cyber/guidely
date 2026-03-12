@@ -51,11 +51,11 @@ function shouldForceGuidelineTool(messages: Anthropic.MessageParam[], isAdjustMo
   if (/gere o guideline completo agora/i.test(text)) return true
 
   // Explicit generation keywords
-  if (/(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b)/i.test(text)) return true
+  if (/(\bgerar\b|\bgere\b|\bgenerate\b|\bpronto\b|\bpode gerar\b|\bpode criar\b|\bgera agora\b|\bfinalizar\b|\bconcluir\b|\bgenerar\b|\bgenera\b|\blisto\b|\bgenera ahora\b|\bcrear slides\b|\bpuede generar\b)\b/i.test(text)) return true
 
   // In adjustment mode, any modification request should force re-generation
   if (isAdjustMode) {
-    const adjustKeywords = /\b(adiciona|adicion|troca|muda|mude|coloca|coloque|remove|retira|tira|altera|alter|modifica|edita|inclui|exclui|acrescenta|adicione|tire|remov|corrig|expande|resumo|simplif|reescrev|renomei|renomea|reorden|reorganiz|apaga|deleta)\b/i
+    const adjustKeywords = /\b(adiciona|adicion|troca|muda|mude|coloca|coloque|remove|retira|tira|altera|alter|modifica|edita|inclui|exclui|acrescenta|adicione|tire|remov|corrig|expande|resumo|simplif|reescrev|renomei|renomea|reorden|reorganiz|apaga|deleta|cambia|cambi|elimina|agrega|añade|quita|actualiza|renombra|reorganiza|amplía|amplía|reduce|reescrib|borra|agreg|añad)\b/i
     if (adjustKeywords.test(text)) return true
   }
 
@@ -117,7 +117,7 @@ function compactMessages(messages: Anthropic.MessageParam[], maxMessages = MAX_M
 
 const MAX_GUIDELINE_CHARS = 60000
 
-function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, currentGuideline?: unknown): string {
+function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, currentGuideline?: unknown, language: 'pt' | 'es' = 'pt'): string {
   let adjustSection = ''
   if (currentGuideline) {
     let guidelineJson = JSON.stringify(currentGuideline, null, 2)
@@ -157,7 +157,7 @@ These slides MUST always appear in every generated guideline, regardless of audi
 | **index** | logo após objective | Navegação rápida — leitores precisam encontrar seções sem ler tudo |
 | **contact** | último slide | Referência para dúvidas |
 
-NEVER omit `index`. Even if the guideline has few slides (8–10), the index is required. It is NOT optional and NOT counted against the slide budget.
+NEVER omit \`index\`. Even if the guideline has few slides (8–10), the index is required. It is NOT optional and NOT counted against the slide budget.
 
 ## Your process
 
@@ -323,7 +323,7 @@ Sempre incluir todas as seções relevantes, nessa ordem:
 - figmaLinks: [{ label: "Protótipo Figma", url: "..." }]
 - specs: [{ label: "Owner", value: "PX Team" }]
 
-### 17. index (opcional, para guidelines com mais de 8 slides)
+### 17. index (OBRIGATÓRIO — sempre incluir logo após o objective)
 - Posicionar logo após o cover
 - **Máximo 5 seções** — o slide tem altura fixa, mais de 5 estoura o limite visual
 - Última seção deve ser sempre "Boas práticas e wording" (ou similar) — não incluir "Contato" no índice
@@ -361,16 +361,35 @@ Sempre incluir todas as seções relevantes, nessa ordem:
 - highlightPosition: onde o componente aparece no mockup ("top" | "middle" | "bottom")
 - Gerar um slide component_focus para cada componente principal identificado no Figma
 
+## Regras visual-first — PRIORIDADE MÁXIMA
+
+Slides são apresentações visuais, não documentos. **Imagem > texto sempre.**
+
+| Campo | Limite estrito |
+|-------|---------------|
+| `body` / `description` | MAX 2-3 frases curtas ou 4 bullet points. NUNCA parágrafos longos. |
+| `behavior.rows` | MAX 6 linhas por slide — crie um segundo slide behavior se precisar de mais |
+| `anatomy.components` | MAX 8 componentes |
+| `do` / `dont` | MAX 4 itens por coluna |
+| `glossary.terms` total | MAX 12 termos (6 por tabela) |
+| `wording.errors` | MAX 3 erros por slide — paginate se precisar |
+| `objective.body` | MAX 4 frases — foque nos 3 pontos principais, não escreva um ensaio |
+
+**imageNote é o elemento mais importante do slide:**
+- Obrigatório em: anatomy, use_case, behavior, before_after, microinteraction, overview, structure
+- Formato: ação + tela + estado — ex: "Screenshot da tela Pagamento PIX em estado de erro com Amount Field preenchido"
+- O designer vai substituir o placeholder por este screenshot — seja preciso
+
+**Quando houver imageNote, reduza o texto ao mínimo.** A imagem conta a história, o texto rotula.
+
 ## Regras de qualidade de conteúdo
 
 1. **Extrair do Figma**: Use APENAS conteúdo real da <figma_content> — nunca invente nomes de CDUs, componentes ou comportamentos
 2. **Especificidade**: Cada descrição deve ser específica ao componente documentado, não genérica
 3. **Padrão CHO**: Tom didático, contextual e prático — como um colega explicando para outro designer
 4. **Países com flags**: Sempre marcar aplicabilidade geográfica com 🇧🇷 🇦🇷 🇲🇽
-5. **imageNote obrigatório**: Todo slide de anatomy, use_case e behavior DEVE ter imageNote descrevendo exatamente o que inserir
-6. **Nomenclatura consistente**: Usar os mesmos nomes do Figma e do design system — não renomear
-7. **Fluxo lógico**: Os slides devem contar uma história: do geral (anatomia) para o específico (CDUs) para o técnico (comportamentos)
-8. **Completude vs. velocidade**: Melhor gerar com "A confirmar" do que deixar campo vazio — stakeholders precisam ver a estrutura completa
+5. **Nomenclatura consistente**: Usar os mesmos nomes do Figma e do design system — não renomear
+6. **Fluxo lógico**: Os slides devem contar uma história: do geral (anatomia) para o específico (CDUs) para o técnico (comportamentos)
 
 ## Checklist pré-geração
 
@@ -384,7 +403,10 @@ Antes de chamar generate_guideline, verificar:
 
 ## Language
 
-Responder no idioma do designer (Português ou Espanhol). Tom: direto, didático, profissional.`
+${language === 'es'
+  ? 'MANDATORY: All responses, questions, and generated slide content MUST be in SPANISH. Never use Portuguese. Tone: direct, didactic, professional.'
+  : 'MANDATORY: All responses, questions, and generated slide content MUST be in PORTUGUESE (Brazilian). Never use Spanish. Tone: direct, didactic, professional.'
+}`
 }
 
 const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
@@ -830,11 +852,12 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401)
     }
 
-    const { messages, figmaContext = '', requestId, currentGuideline } = await req.json() as {
+    const { messages, figmaContext = '', requestId, currentGuideline, language = 'pt' } = await req.json() as {
       messages: Anthropic.MessageParam[]
       figmaContext?: string
       requestId?: string
       currentGuideline?: unknown  // guideline previously generated — injected as context in adjust mode
+      language?: 'pt' | 'es'
     }
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -881,7 +904,7 @@ export default async function handler(req: Request): Promise<Response> {
               max_tokens: 24000,
               // thinking is incompatible with forced tool_choice — only enable when tool_choice is auto
               ...(!forceGuidelineTool ? { thinking: { type: 'enabled', budget_tokens: 8000 } } : {}),
-              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, currentGuideline),
+              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, currentGuideline, language),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool
                 ? { type: 'tool', name: 'generate_guideline' }

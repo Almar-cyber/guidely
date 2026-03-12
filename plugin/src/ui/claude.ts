@@ -260,6 +260,7 @@ export interface StreamChatOptions {
   requestId?: string
   abortSignal?: AbortSignal
   currentGuideline?: unknown
+  language?: 'pt' | 'es'
 }
 
 function authHeaders(anthropicKey: string): Record<string, string> {
@@ -415,7 +416,7 @@ export async function streamChat(
     res = await fetch(`${BASE_URL}/api/chat`, {
       method: 'POST',
       headers: authHeaders(anthropicKey),
-      body: JSON.stringify({ messages, figmaContext: effectiveContext, requestId: options.requestId, currentGuideline: options.currentGuideline }),
+      body: JSON.stringify({ messages, figmaContext: effectiveContext, requestId: options.requestId, currentGuideline: options.currentGuideline, language: options.language }),
       signal: controller.signal,
     })
   } catch {

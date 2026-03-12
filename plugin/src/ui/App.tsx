@@ -130,6 +130,13 @@ function createChatRequestId(): string {
 
 export default function App() {
   const [step, setStep] = useState<Step>('onboarding')
+  const [language, setLanguageState] = useState<'pt' | 'es'>(() => {
+    try { return (localStorage.getItem('guidely-lang') as 'pt' | 'es') || 'pt' } catch { return 'pt' }
+  })
+  const setLanguage = (lang: 'pt' | 'es') => {
+    setLanguageState(lang)
+    try { localStorage.setItem('guidely-lang', lang) } catch {}
+  }
 
   const [figmaToken, setFigmaToken] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
@@ -414,7 +421,9 @@ export default function App() {
 
     const init: Message = {
       role: 'user',
-      content: 'Arquivos Figma analisados com sucesso. Faça as perguntas necessárias para gerar o guideline.',
+      content: language === 'es'
+        ? 'Archivos Figma analizados con éxito. Haz las preguntas necesarias para generar el guideline.'
+        : 'Arquivos Figma analisados com sucesso. Faça as perguntas necessárias para gerar o guideline.',
     }
     setMessages([init])
     setIsStreaming(true)
@@ -459,8 +468,8 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId, abortSignal: abortController.signal, currentGuideline: undefined })
-  }, [anthropicKey])
+    }, { requestId, abortSignal: abortController.signal, currentGuideline: undefined, language })
+  }, [anthropicKey, language])
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim() || isStreaming) return
@@ -529,8 +538,8 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId, abortSignal: abortController.signal, currentGuideline: guideline ?? undefined })
-  }, [messages, isStreaming, figmaContext, anthropicKey, guideline])
+    }, { requestId, abortSignal: abortController.signal, currentGuideline: guideline ?? undefined, language })
+  }, [messages, isStreaming, figmaContext, anthropicKey, guideline, language])
 
   const handleBuildFigma = () => {
     if (!guideline || !guideline.slides?.length) {
@@ -636,8 +645,41 @@ export default function App() {
             ))}
           </div>
 
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '8px 0' }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-3)', letterSpacing: 1, textTransform: 'uppercase', fontWeight: 600 }}>
+              Idioma dos slides
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([
+                { code: 'pt' as const, flag: '🇧🇷', label: 'Português' },
+                { code: 'es' as const, flag: '🇦🇷', label: 'Español' },
+              ]).map(({ code, flag, label }) => (
+                <button
+                  key={code}
+                  onClick={() => setLanguage(code)}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: 'var(--r)',
+                    border: language === code ? '2px solid var(--color-primary)' : '2px solid var(--color-border)',
+                    background: language === code ? 'var(--ax-dark-100)' : 'transparent',
+                    color: language === code ? 'var(--color-text-1)' : 'var(--color-text-3)',
+                    fontWeight: language === code ? 700 : 400,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {flag} {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button className="btn btn-primary onboarding-cta" onClick={() => setStep('connect')}>
-            Começar
+            {language === 'es' ? 'Empezar' : 'Começar'}
           </button>
           <div className="onboarding-note">Configuração rápida · Feito pela equipe CCAP</div>
         </div>
@@ -888,6 +930,15 @@ export default function App() {
       {/* ── Perguntas / Chat ── */}
       {step === 'questions' && (
         <div className="chat-layout">
+          {guideline && (
+            <div style={{ padding: '7px 12px', background: 'var(--ax-dark-100)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <Pencil size={11} color="var(--color-primary)" />
+              <span style={{ fontSize: 11, fontWeight: 600, flex: 1, color: 'var(--color-text-2)' }}>Modo ajuste</span>
+              <button className="btn-ghost btn" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setStep('preview')}>
+                <Eye size={11} /> Ver preview
+              </button>
+            </div>
+          )}
           <div className="scroll">
             {isStreaming && generationStage && (
               <div style={{ padding: '8px 12px 0', fontSize: 11, color: 'var(--color-text-3)' }}>
@@ -907,8 +958,8 @@ export default function App() {
           {messages.length >= 3 && !isStreaming && quickOptions.length === 0 && (
             <div style={{ padding: '4px 10px 0', display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn-ghost btn" style={{ fontSize: 11, padding: '4px 8px' }}
-                onClick={() => sendMessage('gerar')}>
-                <Wand2 size={11} /> Gerar agora
+                onClick={() => sendMessage(language === 'es' ? 'generar' : 'gerar')}>
+                <Wand2 size={11} /> {language === 'es' ? 'Generar ahora' : 'Gerar agora'}
               </button>
             </div>
           )}
@@ -926,7 +977,13 @@ export default function App() {
           <div className="chat-input-bar">
             <textarea
               className="chat-textarea"
-              placeholder={isStreaming ? 'Aguarde…' : 'Responda a pergunta ou escreva "gerar" para criar já'}
+              placeholder={
+                isStreaming
+                  ? (language === 'es' ? 'Espera…' : 'Aguarde…')
+                  : guideline
+                    ? (language === 'es' ? 'Describe qué quieres cambiar… ej: "agrega slide de handoff"' : 'Descreva o que quer alterar… ex: "adiciona slide de handoff", "muda o título do cover"')
+                    : (language === 'es' ? 'Responde la pregunta o escribe "generar"' : 'Responda a pergunta ou escreva "gerar" para criar já')
+              }
               value={chatInput}
               disabled={isStreaming}
               onChange={(e) => setChatInput(e.target.value)}
@@ -999,7 +1056,19 @@ export default function App() {
             }}>{isBuilding ? <><div className="oauth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Criando slides…</> : <><Wand2 size={14} /> Criar slides no Figma</>}</button>
             <div className="btn-row">
               <button className="btn btn-outline" onClick={handleExportDoc}><FileText size={14} /> Exportar doc</button>
-              <button className="btn btn-outline" onClick={() => setStep('questions')}><Pencil size={14} /> Ajustar</button>
+              <button className="btn btn-outline" onClick={() => {
+                setStep('questions')
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1]
+                  if (last?.content?.includes('ajustar') || last?.content?.includes('Modo ajuste')) return prev
+                  return [...prev, {
+                    role: 'assistant',
+                    content: language === 'es'
+                      ? '✏️ ¡Guideline generado! Describe qué quieres cambiar — ej: "agrega un slide de handoff", "cambia el título del cover a X", "elimina el slide de glosario".'
+                      : '✏️ Guideline gerado! Descreva o que quer alterar — ex: "adiciona um slide de handoff", "muda o título do cover para X", "remove o slide de glossário".'
+                  }]
+                })
+              }}><Pencil size={14} /> Ajustar</button>
             </div>
             <button className="btn-ghost btn" onClick={handleReset}><RotateCcw size={12} /> Novo guideline</button>
           </div>
