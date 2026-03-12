@@ -778,18 +778,29 @@ function buildUseCaseMapSlide(
   headerRow.itemSpacing = 8
 
   const emptyCell = makeFrame('empty')
+  emptyCell.layoutMode = 'VERTICAL'
+  emptyCell.primaryAxisSizingMode = 'AUTO'
+  emptyCell.counterAxisSizingMode = 'FIXED'
   emptyCell.resize(COMP_COL, 1)
+  emptyCell.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
+  emptyCell.counterAxisSizingMode = 'FIXED'
   emptyCell.fills = []
   headerRow.appendChild(emptyCell)
 
   slide.caseNames.forEach((name) => {
     const cell = makeFrame(`Header: ${name}`)
+    cell.layoutMode = 'VERTICAL'
+    cell.counterAxisAlignItems = 'CENTER'   // center text horizontally
+    cell.primaryAxisSizingMode = 'AUTO'     // VERTICAL primary = height — AUTO (grows)
+    cell.counterAxisSizingMode = 'FIXED'    // VERTICAL counter = width — FIXED
     cell.resize(colWidth, 1)
+    cell.primaryAxisSizingMode = 'AUTO'     // re-apply after resize()
+    cell.counterAxisSizingMode = 'FIXED'
     cell.fills = []
     const t = makeText(name, 16, FONTS.semiBold, COLORS.textLight)
     t.textAutoResize = 'HEIGHT'
     t.textAlignHorizontal = 'CENTER'
-    cell.appendChild(t)
+    appendFill(cell, t)                     // FILL cell width after parenting
     headerRow.appendChild(cell)
   })
   table.appendChild(headerRow)
@@ -811,20 +822,32 @@ function buildUseCaseMapSlide(
     dataRow.itemSpacing = 8
 
     const compCell = makeFrame('comp')
+    compCell.layoutMode = 'VERTICAL'
+    compCell.primaryAxisSizingMode = 'AUTO'    // height grows with text
+    compCell.counterAxisSizingMode = 'FIXED'   // width fixed
     compCell.resize(COMP_COL, 1)
+    compCell.primaryAxisSizingMode = 'AUTO'    // re-apply after resize()
+    compCell.counterAxisSizingMode = 'FIXED'
     compCell.fills = []
     const compText = makeText(row.component, 18, FONTS.semiBold, COLORS.textPrimary)
     compText.textAutoResize = 'HEIGHT'
-    compCell.appendChild(compText)
+    appendFill(compCell, compText)             // FILL cell width after parenting
     dataRow.appendChild(compCell)
 
     slide.caseNames.forEach((caseName) => {
       const cell = makeFrame('cell')
+      cell.layoutMode = 'VERTICAL'
+      cell.counterAxisAlignItems = 'CENTER'    // center checkmark horizontally
+      cell.primaryAxisSizingMode = 'AUTO'      // height grows with text
+      cell.counterAxisSizingMode = 'FIXED'     // width fixed
       cell.resize(colWidth, 1)
+      cell.primaryAxisSizingMode = 'AUTO'      // re-apply after resize()
+      cell.counterAxisSizingMode = 'FIXED'
       cell.fills = []
       const check = makeText(row.cases[caseName] ? '✅' : '—', 18, FONTS.regular,
         row.cases[caseName] ? COLORS.accent : COLORS.textSecondary)
       check.textAlignHorizontal = 'CENTER'
+      check.textAutoResize = 'HEIGHT'
       cell.appendChild(check)
       dataRow.appendChild(cell)
     })
@@ -855,37 +878,40 @@ function buildUseCaseSlide(
   const bar = makeHeaderBar(guidelineTitle, slideNum)
   frame.appendChild(bar)
 
-  // Top: title row with countries
-  const topContent = makeFrame('Top')
-  setAutoLayout(topContent, 'HORIZONTAL', PAD.gapSmall, PAD.slideTop, 20, PAD.slideH, PAD.slideH)
-  topContent.fills = []
-  topContent.primaryAxisSizingMode = 'AUTO'
-  topContent.counterAxisSizingMode = 'FIXED'
-  topContent.resize(SLIDE_WIDTH, 100)
-  topContent.primaryAxisSizingMode = 'AUTO'
-  topContent.counterAxisAlignItems = 'CENTER'
+  // Single VERTICAL content container (0,0 → padded to clear header)
+  const content = makeFrame('Content')
+  setAutoLayout(content, 'VERTICAL', 40, PAD.slideTop, PAD.slideBot, PAD.slideH, PAD.slideH)
+  content.fills = []
+  content.primaryAxisSizingMode = 'FIXED'  // VERTICAL primary = height — FIXED (full slide)
+  content.counterAxisSizingMode = 'FIXED'  // VERTICAL counter = width — FIXED (full slide)
+  content.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
+
+  // Title row with countries
+  const titleRow = makeFrame('TitleRow')
+  setAutoLayout(titleRow, 'HORIZONTAL', PAD.gapSmall, 0, 0, 0, 0)
+  titleRow.fills = []
+  titleRow.counterAxisSizingMode = 'AUTO'  // HORIZONTAL counter = height — AUTO (grows)
+  titleRow.counterAxisAlignItems = 'CENTER'
 
   const titleText = makeText(slide.title, 40, FONTS.bold, COLORS.textPrimary)
-  topContent.appendChild(titleText)
+  titleRow.appendChild(titleText)
 
   slide.countries?.forEach((c) => {
     const tag = makeTag(c)
     tag.fills = solid(COLORS.bgSection)
     const tagTxt = tag.children[0] as TextNode
     tagTxt.fills = solid(COLORS.textSecondary)
-    topContent.appendChild(tag)
+    titleRow.appendChild(tag)
   })
-  appendFill(frame, topContent)
+  appendFill(content, titleRow)  // FILL width inside content
 
   // Main row: mockup (left) + annotation cards (right)
   const mainRow = makeFrame('Main')
-  setAutoLayout(mainRow, 'HORIZONTAL', 40, 0, PAD.slideBot, PAD.slideH, PAD.slideH)
+  setAutoLayout(mainRow, 'HORIZONTAL', 40, 0, 0, 0, 0)
   mainRow.fills = []
-  mainRow.primaryAxisSizingMode = 'AUTO'
-  mainRow.counterAxisSizingMode = 'FIXED'
-  mainRow.resize(SLIDE_WIDTH, 100)
-  mainRow.primaryAxisSizingMode = 'AUTO'
   mainRow.counterAxisAlignItems = 'MIN'
+  appendFill(content, mainRow)           // FILL width inside content
+  mainRow.layoutSizingVertical = 'FILL'  // fills remaining height after titleRow
 
   // Mockup with component blocks
   const mockup = makeFrame('Mockup')
@@ -985,7 +1011,9 @@ function buildUseCaseSlide(
   }
 
   mainRow.appendChild(annCol)
-  appendFill(frame, mainRow)
+  annCol.layoutSizingHorizontal = 'FILL'  // fill remaining mainRow width (set after append)
+
+  frame.appendChild(content)
   return frame
 }
 
@@ -1050,11 +1078,15 @@ function buildBehaviorSlide(
   const headers = ['Estado / Condição', 'Descrição']
   headers.forEach((h) => {
     const cell = makeFrame('header cell')
-    cell.fills = []
+    cell.layoutMode = 'VERTICAL'
+    cell.primaryAxisSizingMode = 'AUTO'    // height grows
+    cell.counterAxisSizingMode = 'AUTO'    // width from layoutGrow
     cell.layoutGrow = 1
+    cell.fills = []
     const t = makeText(h, 12, FONTS.semiBold, COLORS.textLight)
     t.letterSpacing = { value: 0.5, unit: 'PIXELS' }
-    cell.appendChild(t)
+    t.textAutoResize = 'HEIGHT'
+    appendFill(cell, t)
     tHead.appendChild(cell)
   })
   appendFill(table, tHead)
@@ -1073,20 +1105,26 @@ function buildBehaviorSlide(
     tRow.counterAxisSizingMode = 'AUTO'  // re-apply after resize()
 
     const labelCell = makeFrame('label cell')
-    labelCell.fills = []
+    labelCell.layoutMode = 'VERTICAL'
+    labelCell.primaryAxisSizingMode = 'AUTO'   // height grows with text
+    labelCell.counterAxisSizingMode = 'AUTO'   // width from layoutGrow
     labelCell.layoutGrow = 1
+    labelCell.fills = []
     const lText = makeText(row.label, 14, FONTS.semiBold, COLORS.textPrimary)
     lText.textAutoResize = 'HEIGHT'
-    labelCell.appendChild(lText)
+    appendFill(labelCell, lText)
     tRow.appendChild(labelCell)
 
     const valCell = makeFrame('value cell')
-    valCell.fills = []
+    valCell.layoutMode = 'VERTICAL'
+    valCell.primaryAxisSizingMode = 'AUTO'     // height grows with text
+    valCell.counterAxisSizingMode = 'AUTO'     // width from layoutGrow
     valCell.layoutGrow = 1
+    valCell.fills = []
     const vText = makeText(row.value, 14, FONTS.regular, COLORS.textSecondary)
     vText.lineHeight = { value: 150, unit: 'PERCENT' }
     vText.textAutoResize = 'HEIGHT'
-    valCell.appendChild(vText)
+    appendFill(valCell, vText)
     tRow.appendChild(valCell)
 
     appendFill(table, tRow)
