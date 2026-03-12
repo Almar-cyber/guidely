@@ -129,7 +129,7 @@ Você está gerando um guideline para LIDERANÇAS E STAKEHOLDERS. Adapte todo o 
 ### Slides a PRIORIZAR:
 - **cover** — título impactante, subtítulo que comunica o valor do componente
 - **objective** — 3 parágrafos: o que é, por que existe (impacto no negócio), quem é dono
-- **index** — visão geral do que será coberto (máx. 5 seções)
+- **index** — OBRIGATÓRIO: índice das seções do guideline para navegação rápida (máx. 5 seções)
 - **section** — divisores de seção obrigatórios para organização
 - **anatomy** — simplificado: nomes dos componentes sem specs técnicas
 - **use_case_map** — tabela geral de CDUs (quais casos existem)
@@ -165,7 +165,7 @@ Você está gerando um guideline para LIDERANÇAS E STAKEHOLDERS. Adapte todo o 
 Você está gerando um guideline para DESIGNERS. Inclua máximo de detalhe visual, de uso e de design system.
 
 ### Slides a PRIORIZAR (todos relevantes):
-- **cover, objective, index, section, glossary** — estrutura completa
+- **cover, objective, index, section, glossary** — estrutura completa (index é OBRIGATÓRIO para navegação rápida)
 - **anatomy** — detalhado com required/optional, specs de espaçamento
 - **component_focus** — um slide por componente principal encontrado no Figma
 - **structure_dual** — variações visuais lado a lado sempre que houver 2 estados
@@ -200,7 +200,7 @@ Você está gerando um guideline para DESIGNERS. Inclua máximo de detalhe visua
 Você está gerando um guideline para DESENVOLVEDORES. Foque em especificações técnicas de implementação.
 
 ### Slides a PRIORIZAR:
-- **cover, objective, glossary** — contexto e vocabulário técnico
+- **cover, objective, index, glossary** — estrutura base (index é OBRIGATÓRIO para navegação rápida entre seções)
 - **anatomy** — TODOS os componentes com required/optional claramente marcados, incluindo nomes de tokens
 - **behavior** — TODOS os estados: zero, loading, focus, sufixo, erro, disabled, vazio, preenchido
 - **wording** — tabelas completas de copy com variantes por país, formato exato de strings e placeholders
@@ -263,6 +263,7 @@ The user asked to generate now. Call \`generate_guideline\` immediately — do N
 - Wording slides: include variants for each applicable country with exact UI copy strings.
 - Behavior slides: enumerate ALL states found in Figma (zero, loaded, focus, error, disabled, etc.).
 - Slide count: follow the audience recommendation (stakeholders: 10–14 · designers: 15–25 · devs: 12–18). If no audience, aim for 12–20.
+- **index slide is MANDATORY for every audience** — always include it after objective so readers can navigate the guideline quickly.
 ` : ''}
 
 ${audienceSection}
