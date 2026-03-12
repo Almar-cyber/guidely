@@ -926,6 +926,7 @@ function buildUseCaseSlide(
   annCol.counterAxisSizingMode = 'AUTO'
   annCol.resize(1, 700)
   annCol.primaryAxisSizingMode = 'FIXED'
+  annCol.counterAxisSizingMode = 'AUTO'  // re-apply after resize()
 
   const perCard = Math.floor(700 / Math.max(slide.components.length, 1))
   slide.components.forEach((comp, i) => {
@@ -957,6 +958,7 @@ function buildUseCaseSlide(
 
     annRow.appendChild(card)
     annCol.appendChild(annRow)
+    annRow.layoutSizingHorizontal = 'FILL'  // fill annCol width after append
 
     // Thin divider
     if (i < slide.components.length - 1) {
@@ -1912,6 +1914,7 @@ function buildFlowSlide(
     stepCard.primaryAxisSizingMode = 'AUTO'
     stepCard.counterAxisSizingMode = 'FIXED'
     stepCard.resize(240, 1)
+    stepCard.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
     stepCard.cornerRadius = 12
 
     if (step.type === 'decision') {
@@ -2066,6 +2069,7 @@ function buildHandoffSlide(
     table.primaryAxisSizingMode = 'AUTO'
     table.counterAxisSizingMode = 'FIXED'
     table.resize(SLIDE_WIDTH - PAD.slideH * 2, 1)
+    table.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
     table.fills = []
     table.cornerRadius = 8
     table.clipsContent = true
