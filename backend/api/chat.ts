@@ -233,11 +233,18 @@ Você está gerando um guideline para DESENVOLVEDORES. Foque em especificações
   return ''
 }
 
+const MAX_GUIDELINE_CHARS = 60000
+
 function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, audience?: Audience, currentGuideline?: unknown): string {
   const audienceSection = buildAudienceSection(audience)
-  const adjustSection = currentGuideline
-    ? `\n## Current guideline (adjust mode)\n\nThe designer has already generated the following guideline and wants to adjust it. Use it as the base — apply the requested changes and call \`generate_guideline\` with the full updated structure.\n\n<current_guideline>\n${JSON.stringify(currentGuideline, null, 2)}\n</current_guideline>\n`
-    : ''
+  let adjustSection = ''
+  if (currentGuideline) {
+    let guidelineJson = JSON.stringify(currentGuideline, null, 2)
+    if (guidelineJson.length > MAX_GUIDELINE_CHARS) {
+      guidelineJson = guidelineJson.slice(0, MAX_GUIDELINE_CHARS) + '\n... [truncado para manter estabilidade]'
+    }
+    adjustSection = `\n## Current guideline (adjust mode)\n\nThe designer has already generated the following guideline and wants to adjust it. Use it as the base — apply the requested changes and call \`generate_guideline\` with the full updated structure.\n\n<current_guideline>\n${guidelineJson}\n</current_guideline>\n`
+  }
   return `You are a UX Documentation Specialist at Mercado Pago, expert in creating complete guidelines for leadership and stakeholders following the Andes X design system.
 
 ${figmaContext ? `You have already read the designer's Figma files. Here is the extracted content:\n\n<figma_content>\n${figmaContext}\n</figma_content>\n\nUse this content as the primary source for generating the guideline. Only ask questions about information NOT clearly present in the Figma content.` : ''}

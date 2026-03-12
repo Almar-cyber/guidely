@@ -291,9 +291,9 @@ export default function App() {
       let attempts = 0
       const poll = () => {
         attempts++
-        if (attempts > 150) {
+        if (attempts > 60) {
           setAnthropicOAuthStatus('error')
-          setAnthropicOAuthError('Tempo esgotado. Tente novamente.')
+          setAnthropicOAuthError('Tempo esgotado (2 min). Tente novamente.')
           return
         }
         pollAnthropicKey(state).then((key) => {
@@ -324,7 +324,7 @@ export default function App() {
       let attempts = 0
       const poll = () => {
         attempts++
-        if (attempts > 150) {
+        if (attempts > 60) {
           setOauthStatus('idle')
           setFigmaManual(true)
           return
@@ -379,6 +379,11 @@ export default function App() {
         analyzeStageTimeoutRef.current = null
       }
       setAnalyzeStatus('done')
+      if (context.trim().length < 300) {
+        setAnalyzeError('Não foi possível extrair conteúdo dos arquivos Figma. Verifique se o arquivo tem páginas com conteúdo e tente novamente.')
+        setStep('files')
+        return
+      }
       setFigmaContext(context)
       setAudience(null)
       setMessages([])
