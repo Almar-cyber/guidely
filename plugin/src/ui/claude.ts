@@ -270,6 +270,49 @@ function authHeaders(anthropicKey: string): Record<string, string> {
   }
 }
 
+// Export Figma frames as PNG images — returns Record<frameId, number[]>
+export async function exportFigmaImages(
+  fileId: string,
+  frameIds: string[],
+  token: string
+): Promise<Record<string, number[]>> {
+  if (!fileId || frameIds.length === 0) return {}
+
+  const idsParam = frameIds.join(',')
+  let exportRes: Response
+  try {
+    exportRes = await fetch(
+      `https://api.figma.com/v1/images/${fileId}?ids=${encodeURIComponent(idsParam)}&format=png&scale=0.5`,
+      { headers: { 'X-Figma-Token': token } }
+    )
+  } catch {
+    return {}
+  }
+
+  if (!exportRes.ok) return {}
+
+  const exportData = await exportRes.json() as { images?: Record<string, string | null>; err?: string }
+  if (!exportData.images) return {}
+
+  const result: Record<string, number[]> = {}
+  const entries = Object.entries(exportData.images).filter(([, url]) => Boolean(url)) as [string, string][]
+
+  await Promise.allSettled(
+    entries.map(async ([frameId, url]) => {
+      try {
+        const imgRes = await fetch(url)
+        if (!imgRes.ok) return
+        const buffer = await imgRes.arrayBuffer()
+        result[frameId] = Array.from(new Uint8Array(buffer))
+      } catch {
+        // Skip failed image — placeholder will show
+      }
+    })
+  )
+
+  return result
+}
+
 // Fix #9 — robust regex: handles query params, hash, trailing slashes
 export function extractFileId(url: string): string | null {
   const match = url.match(/figma\.com\/(?:design|file|proto)\/([a-zA-Z0-9]+)/)

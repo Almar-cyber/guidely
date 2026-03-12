@@ -141,6 +141,7 @@ The user asked to generate now. Call \`generate_guideline\` immediately — do N
 - For each slide type, populate EVERY optional field that adds value: description, imageNote, note, rationale, variants, countries, bullets, specs, links.
 - Lists: as many items as needed — every CDU, every behavior state, every wording variant per country.
 - "imageNote" is mandatory on anatomy, use_case, behavior, before_after, microinteraction slides.
+- "mockupFrameId" MUST be set on anatomy, use_case, behavior, before_after, microinteraction, overview, structure slides when a matching frame ID appears in "## Frames disponíveis para mockupFrameId". Match by frame name to the slide topic.
 - Wording slides: include variants for each applicable country with exact UI copy strings.
 - Behavior slides: enumerate ALL states found in Figma (zero, loaded, focus, error, disabled, etc.).
 - Slide count: follow the audience recommendation (stakeholders: 10–14 · designers: 15–25 · devs: 12–18). If no audience, aim for 12–20.
@@ -367,13 +368,13 @@ Slides são apresentações visuais, não documentos. **Imagem > texto sempre.**
 
 | Campo | Limite estrito |
 |-------|---------------|
-| `body` / `description` | MAX 2-3 frases curtas ou 4 bullet points. NUNCA parágrafos longos. |
-| `behavior.rows` | MAX 6 linhas por slide — crie um segundo slide behavior se precisar de mais |
-| `anatomy.components` | MAX 8 componentes |
-| `do` / `dont` | MAX 4 itens por coluna |
-| `glossary.terms` total | MAX 12 termos (6 por tabela) |
-| `wording.errors` | MAX 3 erros por slide — paginate se precisar |
-| `objective.body` | MAX 4 frases — foque nos 3 pontos principais, não escreva um ensaio |
+| body / description | MAX 2-3 frases curtas ou 4 bullet points. NUNCA parágrafos longos. |
+| behavior.rows | MAX 6 linhas por slide — crie um segundo slide behavior se precisar de mais |
+| anatomy.components | MAX 8 componentes |
+| do / dont | MAX 4 itens por coluna |
+| glossary.terms total | MAX 12 termos (6 por tabela) |
+| wording.errors | MAX 3 erros por slide — paginate se precisar |
+| objective.body | MAX 4 frases — foque nos 3 pontos principais, não escreva um ensaio |
 
 **imageNote é o elemento mais importante do slide:**
 - Obrigatório em: anatomy, use_case, behavior, before_after, microinteraction, overview, structure
@@ -477,6 +478,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                 },
                 note: { type: 'string' },
                 imageNote: { type: 'string', description: 'Instruction for which mockup screenshot to insert' },
+                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section (e.g. "123:456"). Use ONLY IDs listed there.' },
               },
               required: ['type', 'title', 'components'],
             },
@@ -511,6 +513,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                 body: { type: 'string' },
                 components: { type: 'array', items: { type: 'string' } },
                 imageNote: { type: 'string' },
+                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section' },
               },
               required: ['type', 'title', 'body', 'components'],
             },
@@ -530,6 +533,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                   },
                 },
                 imageNote: { type: 'string' },
+                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section' },
               },
               required: ['type', 'title', 'rows'],
             },
@@ -613,6 +617,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                   required: ['label', 'points'],
                 },
                 imageNote: { type: 'string' },
+                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section' },
               },
               required: ['type', 'title', 'before', 'after'],
             },
@@ -636,6 +641,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                   },
                 },
                 imageNote: { type: 'string' },
+                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section' },
               },
               required: ['type', 'title', 'behaviors'],
             },
@@ -677,6 +683,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                   },
                 },
                 imageNote: { type: 'string' },
+                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section' },
               },
               required: ['type', 'title', 'description'],
             },
@@ -709,6 +716,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
                   },
                 },
                 imageNote: { type: 'string' },
+                mockupFrameId: { type: 'string', description: 'Frame node ID from "## Frames disponíveis para mockupFrameId" section' },
               },
               required: ['type', 'title', 'specs'],
             },

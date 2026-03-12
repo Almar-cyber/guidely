@@ -22,6 +22,7 @@ export interface AnatomySlide {
   components: { index: number; name: string; required: boolean }[]
   note?: string
   imageNote?: string
+  mockupFrameId?: string
 }
 export interface UseCaseMapSlide {
   type: 'use_case_map'
@@ -36,6 +37,7 @@ export interface UseCaseSlide {
   body: string
   components: string[]
   imageNote?: string
+  mockupFrameId?: string
 }
 export interface BehaviorSlide {
   type: 'behavior'
@@ -43,6 +45,7 @@ export interface BehaviorSlide {
   description?: string
   rows: { label: string; value: string }[]
   imageNote?: string
+  mockupFrameId?: string
 }
 export interface DoDontSlide {
   type: 'do_dont'
@@ -86,6 +89,7 @@ export interface BeforeAfterSlide {
   before: { label: string; points: string[] }
   after: { label: string; points: string[] }
   imageNote?: string
+  mockupFrameId?: string
 }
 
 export interface MicrointeractionSlide {
@@ -98,6 +102,7 @@ export interface MicrointeractionSlide {
     trigger?: string       // ex: "Ao focar o Amount Field"
   }[]
   imageNote?: string
+  mockupFrameId?: string
 }
 
 export interface IndexSlide {
@@ -119,6 +124,7 @@ export interface OverviewSlide {
   bullets?: string[]
   links?: { label: string; arrow?: boolean }[]
   imageNote?: string
+  mockupFrameId?: string
 }
 
 export interface StructureSlide {
@@ -133,6 +139,7 @@ export interface StructureSlide {
     note?: string
   }[]
   imageNote?: string
+  mockupFrameId?: string
 }
 
 export interface FlowSlide {
@@ -219,5 +226,5 @@ export type UIToPlugin =
   | { type: 'SAVE_CREDENTIALS'; figmaToken: string; anthropicKey: string }
   | { type: 'SAVE_GUIDELINE'; guideline: string }
   | { type: 'GET_GUIDELINE' }
-  | { type: 'BUILD_SLIDES'; data: GuidelineData; requestId?: string }
+  | { type: 'BUILD_SLIDES'; data: GuidelineData; requestId?: string; mockupImages?: Record<string, number[]> }
   | { type: 'CLOSE' }

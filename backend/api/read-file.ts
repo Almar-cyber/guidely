@@ -121,7 +121,7 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
   )
 
   // 3. Fetch all pages in parallel — each with individual timeout so slow pages don't block others
-  async function fetchPage(page: FigmaNode): Promise<{ name: string; lines: string[] } | null> {
+  async function fetchPage(page: FigmaNode): Promise<{ name: string; lines: string[]; frames: { id: string; name: string }[] } | null> {
     const topFrames = (page.children ?? []).slice(0, MAX_TOP_FRAMES_PER_PAGE)
     if (topFrames.length === 0) return null
 
@@ -159,7 +159,7 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
       pageChars += line.length + 1
     }
 
-    return limited.length > 0 ? { name: page.name, lines: limited } : null
+    return limited.length > 0 ? { name: page.name, lines: limited, frames: topFrames.map((f) => ({ id: f.id, name: f.name })) } : null
   }
 
   // All pages run in parallel — total time ≈ NODES_BATCH_TIMEOUT_MS (not N × timeout)
@@ -167,12 +167,20 @@ async function readFigmaFile(token: string, fileId: string): Promise<string> {
     contentPages.slice(0, MAX_PAGES).map(fetchPage)
   )
 
+  const allFrames: { id: string; name: string }[] = []
   for (const result of pageResults) {
     if (result.status === 'fulfilled' && result.value) {
       sections.push(`## Página: ${result.value.name}\n`)
       sections.push(result.value.lines.join('\n'))
       sections.push('')
+      allFrames.push(...result.value.frames)
     }
+  }
+
+  // Append frame ID index so Claude can assign mockupFrameId
+  if (allFrames.length > 0) {
+    sections.push('\n## Frames disponíveis para mockupFrameId\n')
+    sections.push(allFrames.slice(0, 80).map((f) => `- "${f.name}" → ${f.id}`).join('\n'))
   }
 
   return sections.join('\n')

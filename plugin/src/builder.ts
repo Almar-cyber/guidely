@@ -154,6 +154,7 @@ interface ResolvedFontSet {
 export interface BuildGuidelineOptions {
   onProgress?: (stage: string, progress?: number) => void
   shouldAbort?: () => boolean
+  mockupImages?: Record<string, number[]>
 }
 
 const BUILD_ABORTED_MESSAGE = 'A criação dos slides foi interrompida por tempo limite.'
@@ -2429,6 +2430,31 @@ function buildStructureDualSlide(
   return frame
 }
 // ─────────────────────────────────────────────
+// Image injection
+// ─────────────────────────────────────────────
+
+/**
+ * After a slide frame is built, find its 'Mockup' or 'MockupArea' child and apply
+ * the exported Figma screen as an image fill. Gracefully no-ops if anything fails.
+ */
+function applyMockupImages(frames: FrameNode[], slideFrameId: string | undefined, images: Record<string, number[]>): void {
+  if (!slideFrameId || !images[slideFrameId]) return
+  for (const frame of frames) {
+    const mockup = frame.findOne((n) => (n.name === 'Mockup' || n.name === 'MockupArea') && n.type === 'FRAME') as FrameNode | null
+    if (mockup) {
+      try {
+        const img = figma.createImage(new Uint8Array(images[slideFrameId]))
+        mockup.fills = [{ type: 'IMAGE', imageHash: img.hash, scaleMode: 'FIT' }]
+        for (const child of [...mockup.children]) child.remove()
+      } catch {
+        // Keep placeholder as-is — image fill failed silently
+      }
+      break
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
 // Main entry
 // ─────────────────────────────────────────────
 
@@ -2580,6 +2606,11 @@ export async function buildGuideline(data: GuidelineData, options?: BuildGuideli
       }
       const reason = err instanceof Error ? err.message : String(err)
       throw new Error(`Falha no slide ${i + 1} (${slide.type}): ${reason}`)
+    }
+
+    // Apply exported Figma screen to mockup placeholder if available
+    if (options?.mockupImages && (slide as { mockupFrameId?: string }).mockupFrameId) {
+      applyMockupImages(frames, (slide as { mockupFrameId?: string }).mockupFrameId, options.mockupImages)
     }
 
     ensureBuildNotAborted(options)

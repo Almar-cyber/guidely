@@ -59,7 +59,7 @@ function copyToClipboardFallback(text: string): void {
   document.body.removeChild(el)
 }
 import type { GuidelineData, Slide, PluginToUI } from '../types'
-import { streamChat, readFigmaFiles, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
+import { streamChat, readFigmaFiles, exportFigmaImages, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
 
 function GeneratingIndicator() {
@@ -541,7 +541,7 @@ export default function App() {
     }, { requestId, abortSignal: abortController.signal, currentGuideline: guideline ?? undefined, language })
   }, [messages, isStreaming, figmaContext, anthropicKey, guideline, language])
 
-  const handleBuildFigma = () => {
+  const handleBuildFigma = async () => {
     if (!guideline || !guideline.slides?.length) {
       setBuildError('Nenhum slide para criar. Tente gerar novamente.')
       return
@@ -555,7 +555,23 @@ export default function App() {
     setIsBuilding(true)
     setBuildStage('Enviando guideline para o plugin…')
     setBuildProgress(0.01)
-    parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline, requestId } }, '*')
+
+    // Export Figma screen images for slides that have mockupFrameId
+    let mockupImages: Record<string, number[]> = {}
+    const frameIds = guideline.slides
+      .map((s) => (s as { mockupFrameId?: string }).mockupFrameId)
+      .filter((id): id is string => Boolean(id))
+    const fileId = extractFileId(refUrl) ?? extractFileId(destUrl)
+    if (frameIds.length > 0 && fileId && figmaToken) {
+      setBuildStage('Exportando telas do Figma…')
+      try {
+        mockupImages = await exportFigmaImages(fileId, frameIds, figmaToken)
+      } catch {
+        // Continue without images — placeholders will remain
+      }
+    }
+
+    parent.postMessage({ pluginMessage: { type: 'BUILD_SLIDES', data: guideline, requestId, mockupImages } }, '*')
 
     // Safety timeout — slightly longer than main.ts timeout to let the plugin-side timeout fire first
     if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)

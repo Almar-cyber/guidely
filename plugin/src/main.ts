@@ -126,6 +126,7 @@ figma.ui.onmessage = async (msg: UIToPlugin) => {
         })
       },
       shouldAbort: () => didTimeout || activeBuildRequestId !== requestId,
+      mockupImages: msg.mockupImages,
     })
 
     try {
