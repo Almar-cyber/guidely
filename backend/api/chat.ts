@@ -111,12 +111,42 @@ function compactMessageContent(content: Anthropic.MessageParam['content']): Anth
 function compactMessages(messages: Anthropic.MessageParam[], maxMessages = MAX_MESSAGES): Anthropic.MessageParam[] {
   const sliced = messages.length > maxMessages
     ? [messages[0], ...messages.slice(-(maxMessages - 1))]
-    : messages
+    : [...messages]
 
-  return sliced.map((msg) => ({
-    ...msg,
-    content: compactMessageContent(msg.content),
-  }))
+  // Ensure strict user/assistant alternation after slicing
+  const sanitized: Anthropic.MessageParam[] = []
+  for (const msg of sliced) {
+    const prev = sanitized[sanitized.length - 1]
+    if (prev && prev.role === msg.role) {
+      // Merge consecutive same-role messages
+      const prevText = typeof prev.content === 'string' ? prev.content : extractTextFromMessageContent(prev.content)
+      const curText = typeof msg.content === 'string' ? msg.content : extractTextFromMessageContent(msg.content)
+      prev.content = prevText + '\n\n' + curText
+    } else {
+      sanitized.push({ ...msg })
+    }
+  }
+
+  // API requires first message to be 'user'
+  if (sanitized.length > 0 && sanitized[0].role !== 'user') {
+    sanitized.unshift({ role: 'user', content: '(contexto anterior resumido)' })
+  }
+
+  // API requires last message to be 'user'
+  if (sanitized.length > 0 && sanitized[sanitized.length - 1].role !== 'user') {
+    sanitized.push({ role: 'user', content: '(continuar)' })
+  }
+
+  // Drop empty content
+  return sanitized
+    .filter((msg) => {
+      const text = typeof msg.content === 'string' ? msg.content : extractTextFromMessageContent(msg.content)
+      return text.trim().length > 0
+    })
+    .map((msg) => ({
+      ...msg,
+      content: compactMessageContent(msg.content),
+    }))
 }
 
 const MAX_GUIDELINE_CHARS = 60000
@@ -432,7 +462,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Cover slide',
               properties: {
-                type: { type: 'string', const: 'cover' },
+                type: { type: 'string', enum: ['cover'] },
                 title: { type: 'string', description: 'Main title' },
                 subtitle: { type: 'string', description: 'One-line description' },
                 team: { type: 'string' },
@@ -444,7 +474,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Objective slide',
               properties: {
-                type: { type: 'string', const: 'objective' },
+                type: { type: 'string', enum: ['objective'] },
                 body: { type: 'string', description: 'Full objective text' },
               },
               required: ['type', 'body'],
@@ -453,7 +483,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Glossary slide',
               properties: {
-                type: { type: 'string', const: 'glossary' },
+                type: { type: 'string', enum: ['glossary'] },
                 terms: {
                   type: 'array',
                   items: {
@@ -469,7 +499,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Anatomy slide — numbered component list',
               properties: {
-                type: { type: 'string', const: 'anatomy' },
+                type: { type: 'string', enum: ['anatomy'] },
                 title: { type: 'string' },
                 body: { type: 'string' },
                 components: {
@@ -490,7 +520,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Use-case map — table of components × cases',
               properties: {
-                type: { type: 'string', const: 'use_case_map' },
+                type: { type: 'string', enum: ['use_case_map'] },
                 title: { type: 'string' },
                 caseNames: { type: 'array', items: { type: 'string' }, description: 'Column headers (case names)' },
                 rows: {
@@ -511,7 +541,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Individual use-case slide',
               properties: {
-                type: { type: 'string', const: 'use_case' },
+                type: { type: 'string', enum: ['use_case'] },
                 title: { type: 'string' },
                 countries: { type: 'array', items: { type: 'string' } },
                 body: { type: 'string' },
@@ -525,7 +555,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Behavior slide — state/condition table',
               properties: {
-                type: { type: 'string', const: 'behavior' },
+                type: { type: 'string', enum: ['behavior'] },
                 title: { type: 'string' },
                 description: { type: 'string' },
                 rows: {
@@ -545,7 +575,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Do/Don\'t slide',
               properties: {
-                type: { type: 'string', const: 'do_dont' },
+                type: { type: 'string', enum: ['do_dont'] },
                 title: { type: 'string' },
                 do: { type: 'array', items: { type: 'string' }, description: 'List of recommended practices' },
                 dont: { type: 'array', items: { type: 'string' }, description: 'List of practices to avoid' },
@@ -556,7 +586,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Wording slide — error messages per country',
               properties: {
-                type: { type: 'string', const: 'wording' },
+                type: { type: 'string', enum: ['wording'] },
                 title: { type: 'string' },
                 errors: {
                   type: 'array',
@@ -585,7 +615,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Contact slide',
               properties: {
-                type: { type: 'string', const: 'contact' },
+                type: { type: 'string', enum: ['contact'] },
                 channel: { type: 'string', description: 'Slack channel name' },
                 links: {
                   type: 'array',
@@ -602,7 +632,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Before/after comparison slide',
               properties: {
-                type: { type: 'string', const: 'before_after' },
+                type: { type: 'string', enum: ['before_after'] },
                 title: { type: 'string' },
                 before: {
                   type: 'object',
@@ -628,7 +658,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Micro-interactions slide',
               properties: {
-                type: { type: 'string', const: 'microinteraction' },
+                type: { type: 'string', enum: ['microinteraction'] },
                 title: { type: 'string' },
                 description: { type: 'string' },
                 behaviors: {
@@ -652,7 +682,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Index / table of contents slide',
               properties: {
-                type: { type: 'string', const: 'index' },
+                type: { type: 'string', enum: ['index'] },
                 sections: {
                   type: 'array',
                   items: {
@@ -672,7 +702,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Overview / Visión general slide — introduces a section with description and mockup',
               properties: {
-                type: { type: 'string', const: 'overview' },
+                type: { type: 'string', enum: ['overview'] },
                 title: { type: 'string' },
                 sectionLabel: { type: 'string', description: 'ex: "1 · CHO en pasos"' },
                 description: { type: 'string' },
@@ -694,7 +724,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Structure / Specs slide — detailed component specs with variants per country',
               properties: {
-                type: { type: 'string', const: 'structure' },
+                type: { type: 'string', enum: ['structure'] },
                 title: { type: 'string' },
                 sectionLabel: { type: 'string' },
                 description: { type: 'string' },
@@ -727,7 +757,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Flow / Logic slide — navigation flows and decision trees',
               properties: {
-                type: { type: 'string', const: 'flow' },
+                type: { type: 'string', enum: ['flow'] },
                 title: { type: 'string' },
                 sectionLabel: { type: 'string' },
                 description: { type: 'string' },
@@ -758,7 +788,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Handoff slide — Figma links and implementation specs',
               properties: {
-                type: { type: 'string', const: 'handoff' },
+                type: { type: 'string', enum: ['handoff'] },
                 title: { type: 'string' },
                 country: { type: 'string' },
                 figmaLinks: {
@@ -784,7 +814,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Section break — yellow slide with large title, used before each major section',
               properties: {
-                type: { type: 'string', const: 'section' },
+                type: { type: 'string', enum: ['section'] },
                 number: { type: 'string', description: 'Section number, zero-padded (ex: "01")' },
                 title: { type: 'string', description: 'Section name (ex: "CHO em passos")' },
                 subtitle: { type: 'string', description: 'Sub-topic (ex: "Visão geral")' },
@@ -796,7 +826,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Dual structure slide — two screen variants side by side with annotations',
               properties: {
-                type: { type: 'string', const: 'structure_dual' },
+                type: { type: 'string', enum: ['structure_dual'] },
                 title: { type: 'string' },
                 subtitle: { type: 'string' },
                 leftLabel: { type: 'string', description: 'Label for left variant (ex: "Caso típico")' },
@@ -816,7 +846,7 @@ const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
               type: 'object',
               description: 'Component focus — gray slide with breadcrumb, drills into a single UI component',
               properties: {
-                type: { type: 'string', const: 'component_focus' },
+                type: { type: 'string', enum: ['component_focus'] },
                 breadcrumb: { type: 'array', items: { type: 'string' }, description: 'Navigation path (ex: ["Estrutura", "Medios", "Header"])' },
                 screenName: { type: 'string', description: 'Name of the screen (ex: "Listado de medios")' },
                 componentTitle: { type: 'string', description: 'Component name with number (ex: "1. Tarea (Título)")' },
@@ -937,8 +967,12 @@ export default async function handler(req: Request): Promise<Response> {
           controller.close()
         } catch (err) {
           if (initTimeoutId) clearTimeout(initTimeoutId)
+          const isApiError = err && typeof err === 'object' && 'status' in err
+          const status = isApiError ? (err as { status: number }).status : undefined
+          const errorBody = isApiError && 'error' in err ? (err as { error: unknown }).error : undefined
           const message = err instanceof Error ? err.message : 'Stream error'
-          emitJson({ error: { message }, requestId: traceId })
+          console.error('[chat] API error', { status, message, errorBody, requestId: traceId, messageCount: compactedMessages.length })
+          emitJson({ error: { message, status, detail: errorBody }, requestId: traceId })
           controller.close()
         }
       },
