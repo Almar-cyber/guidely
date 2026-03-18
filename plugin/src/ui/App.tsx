@@ -561,13 +561,26 @@ export default function App() {
     const frameIds = guideline.slides
       .map((s) => (s as { mockupFrameId?: string }).mockupFrameId)
       .filter((id): id is string => Boolean(id))
-    const fileId = extractFileId(refUrl) ?? extractFileId(destUrl)
-    if (frameIds.length > 0 && fileId && figmaToken) {
+      
+    const refId = extractFileId(refUrl)
+    const destId = extractFileId(destUrl)
+    
+    if (frameIds.length > 0 && figmaToken) {
       setBuildStage('Exportando telas do Figma…')
-      try {
-        mockupImages = await exportFigmaImages(fileId, frameIds, figmaToken)
-      } catch {
-        // Continue without images — placeholders will remain
+      
+      if (refId) {
+        try {
+          const refImages = await exportFigmaImages(refId, frameIds, figmaToken)
+          mockupImages = { ...mockupImages, ...refImages }
+        } catch { }
+      }
+      
+      const missingFrameIds = frameIds.filter(id => !mockupImages[id])
+      if (destId && destId !== refId && missingFrameIds.length > 0) {
+        try {
+          const destImages = await exportFigmaImages(destId, missingFrameIds, figmaToken)
+          mockupImages = { ...mockupImages, ...destImages }
+        } catch { }
       }
     }
 

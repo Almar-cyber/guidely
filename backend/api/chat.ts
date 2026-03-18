@@ -71,7 +71,9 @@ const STREAM_INIT_TIMEOUT_MS = 90000
 
 function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
-  return `${text.slice(0, maxChars - 1)}…`
+  const sliced = `${text.slice(0, maxChars - 1)}…`
+  // Fix headless surrogate pairs that cause Anthropic API to crash with 400 "Error"
+  return typeof (sliced as any).toWellFormed === 'function' ? (sliced as any).toWellFormed() : sliced.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|([^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/g, '')
 }
 
 function compactFigmaContext(context: string, maxChars = MAX_CONTEXT_CHARS): string {
@@ -82,7 +84,9 @@ function compactFigmaContext(context: string, maxChars = MAX_CONTEXT_CHARS): str
   const head = context.slice(0, headSize)
   const tail = context.slice(-tailSize)
 
-  return `${head}\n\n[... contexto resumido automaticamente para evitar erro por payload grande ...]\n\n${tail}`
+  const combined = `${head}\n\n[... contexto resumido automaticamente para evitar erro por payload grande ...]\n\n${tail}`
+  // Clean surrogate pairs to prevent Anthropic failing
+  return typeof (combined as any).toWellFormed === 'function' ? (combined as any).toWellFormed() : combined.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|([^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/g, '')
 }
 
 function compactMessageContent(content: Anthropic.MessageParam['content']): Anthropic.MessageParam['content'] {

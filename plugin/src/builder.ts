@@ -264,6 +264,78 @@ function makeDivider(): FrameNode {
   return d
 }
 
+/**
+ * Decorative background element — gradient stroke ellipses matching the Pencil redesign.
+ * Creates a wrapper frame (1920×1080) with ellipses using thick gradient strokes.
+ * Must be called BEFORE adding slide content so it stays behind everything.
+ */
+function makeBgElmt(frame: FrameNode, variant: 'cover' | 'objective' | 'index' | 'section' | 'contact' | 'glossary'): void {
+  // Gradient: yellow→lime→teal→blue (matches Pencil bg-elmt redesign)
+  const gradientStops: ColorStop[] = [
+    { color: { r: 1.000, g: 0.855, b: 0.004, a: 1 }, position: 0 },
+    { color: { r: 1.000, g: 0.945, b: 0.455, a: 1 }, position: 0.23 },
+    { color: { r: 0.847, g: 0.945, b: 0.573, a: 1 }, position: 0.54 },
+    { color: { r: 0.667, g: 0.949, b: 0.804, a: 1 }, position: 0.67 },
+    { color: { r: 0.565, g: 0.886, b: 0.988, a: 1 }, position: 0.75 },
+    { color: { r: 0.353, g: 0.824, b: 1.000, a: 1 }, position: 0.93 },
+    { color: { r: 0.204, g: 0.514, b: 0.980, a: 1 }, position: 1 },
+  ]
+  const gradientPaint: GradientPaint = {
+    type: 'GRADIENT_LINEAR',
+    gradientStops,
+    gradientTransform: [[0, -1, 1], [1, 0, 0]],
+  }
+
+  type BlobDef = { x: number; y: number; w: number; h: number; thickness: number }
+
+  const configs: Record<string, BlobDef[]> = {
+    cover: [
+      { x: 1393, y: -335, w: 860, h: 860, thickness: 230 },
+      { x: 1544, y:  227, w: 560, h: 560, thickness: 157 },
+    ],
+    section: [
+      { x: 1393, y: -335, w: 860, h: 860, thickness: 230 },
+      { x: 1544, y:  227, w: 560, h: 560, thickness: 157 },
+    ],
+    contact: [
+      { x: 1393, y: -335, w: 860, h: 860, thickness: 230 },
+      { x: 1544, y:  227, w: 560, h: 560, thickness: 157 },
+    ],
+    index: [
+      { x: 1441, y: -442, w: 860, h: 860, thickness: 230 },
+      { x:  411, y:  791, w: 560, h: 560, thickness: 157 },
+    ],
+    objective: [
+      { x: 1441, y: -442, w: 860, h: 860, thickness: 230 },
+      { x:  411, y:  791, w: 560, h: 560, thickness: 157 },
+    ],
+    glossary: [
+      { x: 1441, y: -442, w: 860, h: 860, thickness: 230 },
+    ],
+  }
+
+  const bgFrame = figma.createFrame()
+  bgFrame.name = 'bg-elmt'
+  bgFrame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
+  bgFrame.fills = []
+  bgFrame.clipsContent = true
+  frame.appendChild(bgFrame)
+  bgFrame.x = 0; bgFrame.y = 0
+
+  const blobs = configs[variant] ?? configs.cover
+  for (const b of blobs) {
+    const el = figma.createEllipse()
+    el.name = 'blob'
+    el.fills = []
+    el.strokes = [gradientPaint]
+    el.strokeWeight = b.thickness
+    el.strokeAlign = 'INSIDE'
+    bgFrame.appendChild(el)
+    el.resize(b.w, b.h)
+    el.x = b.x; el.y = b.y
+  }
+}
+
 /** appendChild + set layoutSizingHorizontal='FILL' (must be done after parenting)
  * IMPORTANT: Only sets FILL when the parent has auto-layout (layoutMode !== 'NONE').
  * Setting layoutSizingHorizontal='FILL' on a child of a non-auto-layout frame
@@ -377,6 +449,7 @@ function buildCoverSlide(slide: CoverSlide, index: number): FrameNode {
   frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
   frame.fills = solid(COLORS.bgCover)
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+  makeBgElmt(frame, 'cover')
 
   // ── Content frame: paddingTop=400 pushes badge/title down (proven pattern) ──
   const content = makeFrame('CoverContent')
@@ -408,8 +481,8 @@ function buildCoverSlide(slide: CoverSlide, index: number): FrameNode {
   content.appendChild(badge)
 
   // Main title
-  const title = makeText(slide.title, 80, FONTS.extraBold, COLORS.textOnCover)
-  title.lineHeight = { value: 105, unit: 'PERCENT' }
+  const title = makeText(slide.title, 120, FONTS.extraBold, COLORS.textOnCover)
+  title.lineHeight = { value: 100, unit: 'PERCENT' }
   title.letterSpacing = { value: -2, unit: 'PIXELS' }
   appendFill(content, title)
 
@@ -432,6 +505,7 @@ function buildObjectiveSlide(
   frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
   frame.fills = solid(COLORS.bg)
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+  makeBgElmt(frame, 'objective')
 
   // ── Andes X: proven setAutoLayout pattern, 2-col horizontal ──
   const header = makeFloatingHeader(guidelineTitle, slideNum)
@@ -482,6 +556,18 @@ function buildObjectiveSlide(
 
   cols.appendChild(rightCol)
   appendFill(frame, cols)
+
+  // Blur overlay (matches Pencil redesign — semi-transparent frosted glass over content)
+  const blurOverlay = makeFrame('BlurOverlay')
+  blurOverlay.resize(1711, 756)
+  blurOverlay.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.502 }]
+  blurOverlay.effects = [{ type: 'BACKGROUND_BLUR', radius: 98, visible: true } as BlurEffect]
+  blurOverlay.strokes = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.502 }]
+  blurOverlay.strokeWeight = 1.4
+  blurOverlay.strokeAlign = 'INSIDE'
+  frame.appendChild(blurOverlay)
+  blurOverlay.x = 104.5; blurOverlay.y = 162
+
   return frame
 }
 
@@ -495,6 +581,7 @@ function buildGlossarySlide(
   frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
   frame.fills = solid(COLORS.bg)
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+  makeBgElmt(frame, 'glossary')
 
   // ── Andes X: floating label, title top-left, 2 tables side-by-side ──
   const header = makeFloatingHeader(guidelineTitle, slideNum)
@@ -1070,7 +1157,7 @@ function buildBehaviorSlide(
   content.appendChild(title)
 
   if (slide.description) {
-    const desc = makeText(slide.description, 16, FONTS.regular, COLORS.textSecondary)
+    const desc = makeText(slide.description, 20, FONTS.regular, COLORS.textSecondary)
     desc.lineHeight = { value: 160, unit: 'PERCENT' }
     appendFill(content, desc)
   }
@@ -1184,7 +1271,7 @@ function buildDoDontSlide(
 ): FrameNode {
   const frame = makeFrame('Do / Dont')
   frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
-  frame.fills = solid(COLORS.bg)
+  frame.fills = solid(COLORS.bgSection)
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
 
   const bar = makeHeaderBar(guidelineTitle, slideNum)
@@ -1499,7 +1586,7 @@ function buildMicrointeractionSlide(
   content.appendChild(title)
 
   if (slide.description) {
-    const desc = makeText(slide.description, 16, FONTS.regular, COLORS.textSecondary)
+    const desc = makeText(slide.description, 20, FONTS.regular, COLORS.textSecondary)
     desc.lineHeight = { value: 160, unit: 'PERCENT' }
     appendFill(content, desc)
   }
@@ -1561,6 +1648,7 @@ function buildIndexSlide(
   frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
   frame.fills = solid(COLORS.bg)
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+  makeBgElmt(frame, 'index')
 
   // Top-left label
   const lbl = makeText(`GUIDELINE - ${guidelineTitle.toUpperCase()}`, 16, FONTS.bold, COLORS.textPrimary)
@@ -1584,7 +1672,7 @@ function buildIndexSlide(
   chapList.resize(1000, 1)
   chapList.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
   frame.appendChild(chapList)
-  chapList.x = 793; chapList.y = 100
+  chapList.x = 793; chapList.y = 399
 
   // Max 5 sections so content fits within the 1080px slide height
   const visibleSections = slide.sections.slice(0, 5)
@@ -1701,7 +1789,7 @@ function buildOverviewSlide(
   const title = makeText(slide.title, 40, FONTS.bold, COLORS.textPrimary)
   left.appendChild(title)
 
-  const desc = makeText(slide.description, 16, FONTS.regular, COLORS.textSecondary)
+  const desc = makeText(slide.description, 20, FONTS.regular, COLORS.textSecondary)
   desc.lineHeight = { value: 160, unit: 'PERCENT' }
   desc.textAutoResize = 'HEIGHT'
   left.appendChild(desc)
@@ -1947,7 +2035,7 @@ function buildFlowSlide(
   content.appendChild(title)
 
   if (slide.description) {
-    const desc = makeText(slide.description, 16, FONTS.regular, COLORS.textSecondary)
+    const desc = makeText(slide.description, 20, FONTS.regular, COLORS.textSecondary)
     desc.lineHeight = { value: 150, unit: 'PERCENT' }
     desc.textAutoResize = 'HEIGHT'
     content.appendChild(desc)
@@ -2182,14 +2270,15 @@ function buildSectionSlide(slide: SectionSlide, index: number): FrameNode {
   frame.resize(SLIDE_WIDTH, SLIDE_HEIGHT)
   frame.fills = solid(COLORS.bgCover)
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
+  makeBgElmt(frame, 'section')
 
-  // Main content: paddingTop=280, paddingLeft=98
+  // Main content left column: paddingTop=280, paddingLeft=98, width ~half slide
   const content = makeFrame('Content')
-  setAutoLayout(content, 'VERTICAL', 24, 280, 80, 98, 98)
+  setAutoLayout(content, 'VERTICAL', 24, 280, 80, 98, 48)
   content.fills = []
   content.primaryAxisSizingMode = 'AUTO'
   content.counterAxisSizingMode = 'FIXED'
-  content.resize(SLIDE_WIDTH, 1)
+  content.resize(SLIDE_WIDTH / 2, 1)
   content.primaryAxisSizingMode = 'AUTO'  // re-apply after resize()
   content.counterAxisAlignItems = 'MIN'
 
@@ -2216,7 +2305,26 @@ function buildSectionSlide(slide: SectionSlide, index: number): FrameNode {
     content.appendChild(makeText(b, 22, FONTS.regular, COLORS.textSecondary))
   })
 
-  appendFill(frame, content)
+  frame.appendChild(content)
+
+  // Mockup placeholder — right side
+  const mockup = makeFrame('Mockup')
+  mockup.cornerRadius = 24
+  mockup.fills = [{ type: 'SOLID', color: { r: 0.157, g: 0.157, b: 0.2 }, opacity: 0.08 }]
+  mockup.strokeWeight = 1
+  mockup.strokes = [{ type: 'SOLID', color: { r: 0.157, g: 0.157, b: 0.2 }, opacity: 0.15 }]
+  mockup.strokeAlign = 'INSIDE'
+  mockup.resize(380, 680)
+  mockup.x = SLIDE_WIDTH - 100 - 380
+  mockup.y = (SLIDE_HEIGHT - 680) / 2
+
+  const mockLabel = makeText('Inserir tela', 18, FONTS.regular, COLORS.textPrimary)
+  mockLabel.textAlignHorizontal = 'CENTER'
+  mockup.appendChild(mockLabel)
+  mockLabel.x = (380 - mockLabel.width) / 2
+  mockLabel.y = (680 - mockLabel.height) / 2
+
+  frame.appendChild(mockup)
   return frame
 }
 
@@ -2233,7 +2341,7 @@ function buildComponentFocusSlide(
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
 
   const header = makeHeaderBar(guidelineTitle, slideNum)
-  appendFill(frame, header)
+  frame.appendChild(header)
 
   // Horizontal main row: left content + right mockup
   const mainRow = makeFrame('MainRow')
@@ -2333,7 +2441,7 @@ function buildStructureDualSlide(
   frame.x = index * (SLIDE_WIDTH + SLIDE_GAP)
 
   const bar = makeHeaderBar(guidelineTitle, slideNum)
-  appendFill(frame, bar)
+  frame.appendChild(bar)
 
   // Title + subtitle
   const topContent = makeFrame('Top')
@@ -2351,7 +2459,7 @@ function buildStructureDualSlide(
     const subNode = makeText(slide.subtitle, 18, FONTS.regular, COLORS.textSecondary)
     appendFill(topContent, subNode)
   }
-  appendFill(frame, topContent)
+  frame.appendChild(topContent)
 
   // Main: left-annots | left-mockup | right-mockup | right-annots
   const mainRow = makeFrame('Main')
@@ -2426,7 +2534,7 @@ function buildStructureDualSlide(
   mainRow.appendChild(makeSlimMockup(slide.rightLabel ?? 'Caso com scroll', [36, 52, 60, 300, 140, 80]))
   mainRow.appendChild(makeAnnotCol(slide.rightAnnotations, 320, 'right'))
 
-  appendFill(frame, mainRow)
+  frame.appendChild(mainRow)
   return frame
 }
 // ─────────────────────────────────────────────
@@ -2437,17 +2545,47 @@ function buildStructureDualSlide(
  * After a slide frame is built, find its 'Mockup' or 'MockupArea' child and apply
  * the exported Figma screen as an image fill. Gracefully no-ops if anything fails.
  */
-function applyMockupImages(frames: FrameNode[], slideFrameId: string | undefined, images: Record<string, number[]>): void {
+async function applyMockupImages(frames: FrameNode[], slideFrameId: string | undefined, images: Record<string, number[]>): Promise<void> {
   if (!slideFrameId || !images[slideFrameId]) return
   for (const frame of frames) {
     const mockup = frame.findOne((n) => (n.name === 'Mockup' || n.name === 'MockupArea') && n.type === 'FRAME') as FrameNode | null
     if (mockup) {
       try {
         const img = figma.createImage(new Uint8Array(images[slideFrameId]))
-        mockup.fills = [{ type: 'IMAGE', imageHash: img.hash, scaleMode: 'FIT' }]
+        const size = await img.getSizeAsync()
+        const imgRatio = size.width / size.height
+        
+        // Clear old visual placeholders precisely
+        mockup.fills = []
+        mockup.strokes = []
         for (const child of [...mockup.children]) child.remove()
-      } catch {
-        // Keep placeholder as-is — image fill failed silently
+        
+        // Add dedicated rect matching intrinsic ratio
+        const rect = figma.createRectangle()
+        rect.name = 'ScreenMockup'
+        rect.fills = [{ type: 'IMAGE', imageHash: img.hash, scaleMode: 'FILL' }]
+        mockup.appendChild(rect)
+        
+        // Setup frame wrapper to align mockup safely 
+        mockup.layoutMode = 'VERTICAL'
+        mockup.primaryAxisAlignItems = 'MIN'
+        mockup.counterAxisAlignItems = 'CENTER'
+
+        const mockW = mockup.width
+        const mockH = mockup.height
+        
+        // Calculate constraints to ensure it never exceeds container but respects aspect ratio
+        if (mockW / mockH > imgRatio) {
+           const targetH = mockH
+           const targetW = targetH * imgRatio
+           rect.resize(targetW, targetH)
+        } else {
+           const targetW = mockW
+           const targetH = targetW / imgRatio
+           rect.resize(targetW, targetH)
+        }
+      } catch (err) {
+        console.warn('Silent image load failure:', err)
       }
       break
     }
@@ -2610,7 +2748,7 @@ export async function buildGuideline(data: GuidelineData, options?: BuildGuideli
 
     // Apply exported Figma screen to mockup placeholder if available
     if (options?.mockupImages && (slide as { mockupFrameId?: string }).mockupFrameId) {
-      applyMockupImages(frames, (slide as { mockupFrameId?: string }).mockupFrameId, options.mockupImages)
+      await applyMockupImages(frames, (slide as { mockupFrameId?: string }).mockupFrameId, options.mockupImages)
     }
 
     ensureBuildNotAborted(options)

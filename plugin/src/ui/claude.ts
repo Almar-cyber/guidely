@@ -285,7 +285,7 @@ export async function exportFigmaImages(
   let exportRes: Response
   try {
     exportRes = await fetch(
-      `https://api.figma.com/v1/images/${fileId}?ids=${idsParam}&format=png&scale=0.5`,
+      `https://api.figma.com/v1/images/${fileId}?ids=${idsParam}&format=png&scale=2`,
       { headers: { 'X-Figma-Token': token } }
     )
   } catch {
