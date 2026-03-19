@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 
 export const config = { runtime: 'edge' }
+export const maxDuration = 300 // Aumenta timeout para 5 minutos na Vercel
 
 function corsHeaders(): Record<string, string> {
   return {
@@ -151,7 +152,7 @@ function compactMessages(messages: Anthropic.MessageParam[], maxMessages = MAX_M
 
 const MAX_GUIDELINE_CHARS = 60000
 
-function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, currentGuideline?: unknown, language: 'pt' | 'es' = 'pt'): string {
+function buildSystemPromptBlocks(figmaContext: string, forceGenerationNow: boolean, currentGuideline?: unknown, language: 'pt' | 'es' = 'pt') {
   let adjustSection = ''
   if (currentGuideline) {
     let guidelineJson = JSON.stringify(currentGuideline, null, 2)
@@ -160,10 +161,14 @@ function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, cu
     }
     adjustSection = `\n## Current guideline (Adjust & Pair Designer Mode)\n\nThe designer has already generated the following guideline. You are now acting as a proactive Pair Designer.\n\n<current_guideline>\n${guidelineJson}\n</current_guideline>\n`
   }
-  return `You are a UX Documentation Specialist at Mercado Pago, expert in creating complete guidelines for leadership and stakeholders following the Andes X design system.
 
-${figmaContext ? `You have already read the designer's Figma files. Here is the extracted content:\n\n<figma_content>\n${figmaContext}\n</figma_content>\n\nUse this content as the primary source for generating the guideline. Only ask questions about information NOT clearly present in the Figma content.` : ''}
+  const baseInstructions = `You are a UX Documentation Specialist at Mercado Pago, expert in creating complete guidelines for leadership and stakeholders following the Andes X design system.`
 
+  const figmaBlock = figmaContext 
+    ? `You have already read the designer's Figma files. Here is the extracted content:\n\n<figma_content>\n${figmaContext}\n</figma_content>\n\nUse this content as the primary source for generating the guideline. Only ask questions about information NOT clearly present in the Figma content.` 
+    : `(No figma content provided)`
+
+  const remainingInstructions = `
 ${adjustSection}
 
 ${forceGenerationNow ? `## Generation mode (strict)
@@ -448,6 +453,15 @@ ${language === 'es'
   ? 'MANDATORY: All responses, questions, and generated slide content MUST be in SPANISH. Never use Portuguese. Tone: direct, didactic, professional.'
   : 'MANDATORY: All responses, questions, and generated slide content MUST be in PORTUGUESE (Brazilian). Never use Spanish. Tone: direct, didactic, professional.'
 }`
+
+  // Return structured blocks for the Anthropic `system` field.
+  // The figma block gets cache_control: ephemeral so its tokens are cached
+  // across follow-up messages, reducing cost by ~80% on adjust/pair-designer turns.
+  return [
+    { type: 'text' as const, text: baseInstructions },
+    { type: 'text' as const, text: figmaBlock, cache_control: { type: 'ephemeral' as const } },
+    { type: 'text' as const, text: remainingInstructions },
+  ] as any
 }
 
 const GENERATE_GUIDELINE_TOOL: Anthropic.Tool = {
@@ -552,7 +566,7 @@ export default async function handler(req: Request): Promise<Response> {
               max_tokens: 24000,
               // thinking is incompatible with forced tool_choice — only enable when tool_choice is auto
               ...(!forceGuidelineTool ? { thinking: { type: 'enabled', budget_tokens: 8000 } } : {}),
-              system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, currentGuideline, language),
+              system: buildSystemPromptBlocks(compactedFigmaContext, forceGuidelineTool, currentGuideline, language),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool
                 ? { type: 'tool', name: 'generate_guideline' }
