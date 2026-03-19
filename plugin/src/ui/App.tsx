@@ -422,8 +422,8 @@ export default function App() {
     const init: Message = {
       role: 'user',
       content: language === 'es'
-        ? 'Archivos Figma analizados con éxito. Haz las preguntas necesarias para generar el guideline.'
-        : 'Arquivos Figma analisados com sucesso. Faça as perguntas necessárias para gerar o guideline.',
+        ? 'Archivos Figma analizados con éxito. Haz las preguntas necesarias para generar el guideline enfocado en equipos LATAM.'
+        : 'Arquivos Figma analisados com sucesso. Faça as perguntas necessárias para gerar o guideline com foco em times LATAM.',
     }
     setMessages([init])
     setIsStreaming(true)
@@ -659,12 +659,12 @@ export default function App() {
         <div className="onboarding">
           <div className="onboarding-logo"><Sparkles size={22} color="#fff" /></div>
           <div className="onboarding-title">Guidely</div>
-          <div className="onboarding-tagline">Construa guidelines simples de entender.</div>
+          <div className="onboarding-tagline">Construa guidelines de UX para times LATAM.</div>
 
           <div className="onboarding-steps">
             {[
               { icon: <FolderOpen size={18} />, label: 'Aponta para o arquivo Figma' },
-              { icon: <Bot size={18} />, label: 'A IA analisa e faz perguntas' },
+              { icon: <Bot size={18} />, label: 'Gera documentações em PT ou ES' },
               { icon: <Layers size={18} />, label: 'Receba slides prontos' },
             ].map(({ icon, label }) => (
               <div key={label} className="onboarding-step">
@@ -722,6 +722,30 @@ export default function App() {
             <span className="topbar-title">Guidely</span>
           </div>
           <div className="topbar-right">
+            <div style={{ display: 'flex', gap: 4, marginRight: 8, borderRight: '1px solid var(--color-border)', paddingRight: 8 }}>
+              {([
+                { code: 'pt' as const, label: 'PT' },
+                { code: 'es' as const, label: 'ES' },
+              ]).map(({ code, label }) => (
+                <button
+                  key={code}
+                  onClick={() => setLanguage(code)}
+                  style={{
+                    background: language === code ? 'var(--color-primary)' : 'transparent',
+                    color: language === code ? '#fff' : 'var(--color-text-3)',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '2px 6px',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                  title={`Mudar para ${label}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <span className="topbar-badge">Beta</span>
             <span className="topbar-step">{STEP_LABEL[step]}</span>
           </div>
