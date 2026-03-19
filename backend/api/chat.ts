@@ -158,7 +158,7 @@ function buildSystemPrompt(figmaContext: string, forceGenerationNow: boolean, cu
     if (guidelineJson.length > MAX_GUIDELINE_CHARS) {
       guidelineJson = guidelineJson.slice(0, MAX_GUIDELINE_CHARS) + '\n... [truncado para manter estabilidade]'
     }
-    adjustSection = `\n## Current guideline (adjust mode)\n\nThe designer has already generated the following guideline and wants to adjust it. Use it as the base — apply the requested changes and call \`generate_guideline\` with the full updated structure.\n\n<current_guideline>\n${guidelineJson}\n</current_guideline>\n`
+    adjustSection = `\n## Current guideline (Adjust & Pair Designer Mode)\n\nThe designer has already generated the following guideline. You are now acting as a proactive Pair Designer.\n\n<current_guideline>\n${guidelineJson}\n</current_guideline>\n`
   }
   return `You are a UX Documentation Specialist at Mercado Pago, expert in creating complete guidelines for leadership and stakeholders following the Andes X design system.
 
@@ -199,7 +199,13 @@ NEVER omit \`index\`. Even if the guideline has few slides (8–10), the index i
 1. **Ask 1–2 focused questions** to fill critical gaps (e.g. countries, target audience, team name). Only ask what is NOT clearly present in the Figma content.
 2. **Generate** when the designer answers or says "gerar", "generate", "pronto" or similar.
 
-If the designer asks to adjust after generation (e.g. "adiciona um slide de X", "troca o título", "remove o wording"): apply the change and call \`generate_guideline\` again with the updated content.
+## Adjusting and Pair Designing
+
+When the user asks to adjust the guideline after it was generated, DO NOT just blindly generate it right away unless explicitly asked to just "do it". Instead, act as a true Pair Designer:
+1. **Analyze the request**: How does it impact the overall flow? Are there missing edge cases (empty states, loading, errors, edge cases) from the Figma context that the designer forgot to document?
+2. **Validate & Suggest**: Before calling \`generate_guideline\`, reply to the user highlighting what you will change AND proactively suggest 1 or 2 quick improvements to make the presentation bullet-proof (e.g., "I will add the handoff slide. While I'm at it, I noticed we don't have a slide for the error state of the amount field. Should I add it too?"). 
+3. **Conversational Feedback**: Ask closed/quick questions for them to agree. DO NOT call the generation tool until you agree on the scope.
+4. **Generate**: When the user agrees or pushes just for the generation, call \`generate_guideline\` with the full updated structure.
 
 ## Quick reply options (IMPORTANT)
 
