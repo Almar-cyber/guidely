@@ -543,7 +543,9 @@ export default async function handler(req: Request): Promise<Response> {
           const stream = await Promise.race([
             client.messages.stream({
               model: 'claude-sonnet-4-6',
-              max_tokens: 8192,
+              max_tokens: 24000,
+              // thinking is incompatible with forced tool_choice — only enable when tool_choice is auto
+              ...(!forceGuidelineTool ? { thinking: { type: 'enabled', budget_tokens: 8000 } } : {}),
               system: buildSystemPrompt(compactedFigmaContext, forceGuidelineTool, currentGuideline, language),
               tools: [GENERATE_GUIDELINE_TOOL],
               tool_choice: forceGuidelineTool
@@ -568,12 +570,26 @@ export default async function handler(req: Request): Promise<Response> {
           controller.close()
         } catch (err) {
           if (initTimeoutId) clearTimeout(initTimeoutId)
+          
+          let finalMessage = err instanceof Error ? err.message : 'Stream error'
+          // Extract specific human-readable message from Anthropic API 4xx/5xx raw string
+          if (finalMessage.match(/^[45]\d\d\s+\{/)) {
+            try {
+              const parsed = JSON.parse(finalMessage.replace(/^[45]\d\d\s+/, ''))
+              if (parsed?.error?.message) {
+                finalMessage = parsed.error.message
+              }
+            } catch (e) {
+              // fallback to original if unparsable
+            }
+          }
+
           const isApiError = err && typeof err === 'object' && 'status' in err
           const status = isApiError ? (err as { status: number }).status : undefined
           const errorBody = isApiError && 'error' in err ? (err as { error: unknown }).error : undefined
-          const message = err instanceof Error ? err.message : 'Stream error'
-          console.error('[chat] API error', { status, message, errorBody, requestId: traceId, messageCount: compactedMessages.length })
-          emitJson({ error: { message, status, detail: errorBody }, requestId: traceId })
+          
+          console.error('[chat] API error', { status, finalMessage, errorBody, requestId: traceId, messageCount: compactedMessages.length })
+          emitJson({ error: { message: finalMessage, status, detail: errorBody }, requestId: traceId })
           controller.close()
         }
       },
