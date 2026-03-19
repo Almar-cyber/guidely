@@ -158,6 +158,8 @@ export default function App() {
   const [oauthState, setOauthState] = useState<string | null>(null)
   const [oauthStatus, setOauthStatus] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
   const [oauthError, setOauthError] = useState('')
+  const [isValidatingCredentials, setIsValidatingCredentials] = useState(false)
+  const [credentialError, setCredentialError] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [refUrl, setRefUrl] = useState('')
@@ -353,10 +355,49 @@ export default function App() {
     }
   }
 
-  const handleSaveCredentials = () => {
+  const handleSaveCredentials = async () => {
     if (!figmaToken.trim() || !anthropicKey.trim()) return
-    parent.postMessage({ pluginMessage: { type: 'SAVE_CREDENTIALS', figmaToken: figmaToken.trim(), anthropicKey: anthropicKey.trim() } }, '*')
-    setStep('files')
+    setIsValidatingCredentials(true)
+    setCredentialError('')
+
+    try {
+      // Validação real do token do Figma
+      const figmaRes = await fetch('https://api.figma.com/v1/me', {
+        headers: { 'X-Figma-Token': figmaToken.trim() }
+      })
+      if (!figmaRes.ok) {
+        throw new Error('Token do Figma inválido ou expirado.')
+      }
+
+      // Validação real da chave da Anthropic
+      const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicKey.trim(),
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'ping' }]
+        })
+      })
+
+      if (!anthropicRes.ok) {
+        const errJson = await anthropicRes.json().catch(() => ({}))
+        const errorMsg = errJson?.error?.message || anthropicRes.statusText
+        throw new Error(`Chave do Claude recusada: ${errorMsg}`)
+      }
+
+      parent.postMessage({ pluginMessage: { type: 'SAVE_CREDENTIALS', figmaToken: figmaToken.trim(), anthropicKey: anthropicKey.trim() } }, '*')
+      setStep('files')
+    } catch (err: any) {
+      setCredentialError(err.message || 'Erro validando credenciais')
+    } finally {
+      setIsValidatingCredentials(false)
+    }
   }
 
   const handleAnalyze = async () => {
@@ -903,8 +944,14 @@ export default function App() {
               </div>
             )}
 
-            <button className="btn btn-primary" onClick={handleSaveCredentials} disabled={!credentialsValid}>
-              Continuar
+            {credentialError && (
+              <div style={{ color: 'var(--color-danger, #ed314a)', fontSize: 11, background: 'rgba(237,49,74,0.1)', padding: 8, borderRadius: 4, marginTop: 8 }}>
+                {credentialError}
+              </div>
+            )}
+
+            <button className="btn btn-primary" onClick={handleSaveCredentials} disabled={!credentialsValid || isValidatingCredentials}>
+              {isValidatingCredentials ? <><div className="oauth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Validando chaves...</> : 'Continuar'}
             </button>
           </div>
         </div>
