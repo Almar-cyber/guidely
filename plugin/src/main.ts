@@ -53,6 +53,7 @@ async function sendStoredCredentials() {
     type: 'STORED_CREDENTIALS',
     figmaToken: figmaToken ?? '',
     anthropicKey: anthropicKey ?? '',
+    fileKey: figma.fileKey,
   })
 }
 sendStoredCredentials()
@@ -69,6 +70,7 @@ figma.ui.onmessage = async (msg: UIToPlugin) => {
       type: 'STORED_CREDENTIALS',
       figmaToken: figmaToken ?? '',
       anthropicKey: anthropicKey ?? '',
+      fileKey: figma.fileKey,
     })
   }
 

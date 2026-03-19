@@ -201,6 +201,8 @@ export default function App() {
     streamAbortRef.current?.abort()
   }, [])
 
+  const [currentFileKey, setCurrentFileKey] = useState('')
+
   useEffect(() => {
     parent.postMessage({ pluginMessage: { type: 'GET_CREDENTIALS' } }, '*')
     parent.postMessage({ pluginMessage: { type: 'GET_GUIDELINE' } }, '*')
@@ -208,9 +210,10 @@ export default function App() {
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
-      const msg = event.data?.pluginMessage as PluginToUI | undefined
+      const msg = event.data?.pluginMessage as PluginToUI & { fileKey?: string } | undefined
       if (!msg) return
       if (msg.type === 'STORED_CREDENTIALS') {
+        if (msg.fileKey) setCurrentFileKey(msg.fileKey)
         if (msg.figmaToken) setFigmaToken(msg.figmaToken)
         if (msg.anthropicKey) {
           setAnthropicKey(msg.anthropicKey)
@@ -686,6 +689,29 @@ export default function App() {
     setDestUrl('')
   }
 
+  const handleSoftReset = () => {
+    streamAbortRef.current?.abort()
+    streamAbortRef.current = null
+    setMessages([])
+    setQuickOptions([])
+    setGuideline(null)
+    setIsStreaming(false)
+    setIsGenerating(false)
+    setGenerationStage('')
+    setStreamingText('')
+    setChatInput('')
+    setBuildError('')
+    setIsBuilding(false)
+    setBuildStage('')
+    buildStageRef.current = ''
+    setBuildProgress(null)
+    buildRequestIdRef.current = null
+    if (buildTimeoutRef.current) clearTimeout(buildTimeoutRef.current)
+    setDocMarkdown('')
+    setStep('questions')
+    startChat(figmaContext)
+  }
+
   const figmaConnected = oauthStatus === 'done' || figmaToken.trim().length > 0
   const anthropicConnected = anthropicOAuthStatus === 'done' && anthropicKey.length > 20
   const credentialsValid = figmaConnected && anthropicConnected
@@ -962,27 +988,36 @@ export default function App() {
         <div className="scroll">
           <div className="step">
             <div className="step-title">Arquivos Figma</div>
-            <div className="step-sub">A IA lê o conteúdo e faz perguntas para montar o guideline. Ao menos um é necessário.</div>
+            <div className="step-sub">A IA lê o conteúdo e faz perguntas para montar o guideline.</div>
 
             <label>
-              Arquivo com o design
-              <span className="hint">Cole a URL do handoff ou do componente</span>
-              <input type="text" placeholder="https://www.figma.com/design/..." value={refUrl} onChange={(e) => setRefUrl(e.target.value)} />
+              Arquivo de Referência (Design Handoff)
+              <span className="hint">Onde estão as especificações originais. Você pode colar a URL ou usar o atual.</span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input type="text" style={{ flex: 1 }} placeholder="https://www.figma.com/design/..." value={refUrl} onChange={(e) => setRefUrl(e.target.value)} />
+                {currentFileKey && (
+                  <button className="btn-outline btn" style={{ padding: '0 8px', fontSize: 11, height: 32 }} onClick={() => setRefUrl(`https://www.figma.com/design/${currentFileKey}/Lendo-arquivo-atual`)} title="Usar este arquivo aqui">
+                    Usar este arq.
+                  </button>
+                )}
+              </div>
             </label>
 
-            <label>
-              Arquivo destino <span className="hint">(opcional)</span>
-              <span className="hint">Onde os slides serão criados. Deixe vazio para criar no arquivo atual.</span>
+            <label style={{ marginTop: 12 }}>
+              Arquivo Extra com Mockups <span className="hint">(opcional)</span>
+              <span className="hint">Preencha apenas se as telas/mockups estiverem em uma URL diferente. <strong>IMPORTANTE: Os slides sempre serão gerados na aba/página que você está visualizando agora!</strong></span>
               <input type="text" placeholder="https://www.figma.com/design/..." value={destUrl} onChange={(e) => setDestUrl(e.target.value)} />
             </label>
 
-            {analyzeError && <div className="error-card">{analyzeError}</div>}
+            {analyzeError && <div className="error-card" style={{ marginTop: 12 }}>{analyzeError}</div>}
 
-            <button className="btn btn-primary" onClick={handleAnalyze}
-              disabled={!refUrl.trim() && !destUrl.trim()}>
-              Analisar
-            </button>
-            <button className="btn-ghost btn" onClick={() => setStep('connect')}><ArrowLeft size={13} /> Voltar</button>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn-primary" onClick={handleAnalyze}
+                disabled={!refUrl.trim() && !destUrl.trim()}>
+                Analisar
+              </button>
+            </div>
+            <button className="btn-ghost btn" style={{ marginTop: 8 }} onClick={() => setStep('connect')}><ArrowLeft size={13} /> Voltar config de Token</button>
           </div>
         </div>
       )}
@@ -1170,7 +1205,15 @@ export default function App() {
                 })
               }}><Pencil size={14} /> Ajustar</button>
             </div>
-            <button className="btn-ghost btn" onClick={handleReset}><RotateCcw size={12} /> Novo guideline</button>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+              <button className="btn-ghost btn" onClick={handleSoftReset} style={{ color: 'var(--color-text-2)' }}>
+                <RotateCcw size={12} /> Refazer usando mesmos arquivos
+              </button>
+              <button className="btn-ghost btn" onClick={handleReset} style={{ color: 'var(--color-text-3)' }}>
+                Ler arquivos do zero
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1197,8 +1240,9 @@ export default function App() {
             )}
             <div className="btn-row" style={{ marginTop: 8, width: '100%' }}>
               <button className="btn btn-outline" onClick={handleExportDoc}><FileText size={14} /> Exportar doc</button>
-              <button className="btn btn-outline" onClick={handleReset}><RotateCcw size={14} /> Novo</button>
+              <button className="btn btn-outline" onClick={handleSoftReset} title="Refazer mantendo a leitura deste Figma"><RotateCcw size={14} /> Refazer</button>
             </div>
+            <button className="btn-ghost btn" style={{ marginTop: 8 }} onClick={handleReset}>Ler arquivos diferentes</button>
           </div>
         </div>
       )}
@@ -1219,8 +1263,9 @@ export default function App() {
           <div style={{ padding: '10px 16px', borderTop: '1px solid var(--color-border-2)' }}>
             <div className="btn-row">
               <button className="btn btn-outline" onClick={() => setStep('preview')}><ArrowLeft size={14} /> Voltar</button>
-              <button className="btn btn-outline" onClick={handleReset}><RotateCcw size={14} /> Novo</button>
+              <button className="btn btn-outline" onClick={handleSoftReset}><RotateCcw size={14} /> Refazer aqui</button>
             </div>
+            <button className="btn-ghost btn" style={{ marginTop: 8, width: '100%', justifyContent: 'center' }} onClick={handleReset}>Ler arquivos diferentes</button>
           </div>
         </div>
       )}
