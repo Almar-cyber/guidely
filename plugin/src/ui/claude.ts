@@ -261,6 +261,7 @@ export interface StreamChatOptions {
   abortSignal?: AbortSignal
   currentGuideline?: unknown
   language?: 'pt' | 'es'
+  figmaImages?: Array<{ frameId: string; base64: string; mediaType: string }>
 }
 
 function authHeaders(anthropicKey: string): Record<string, string> {
@@ -314,6 +315,51 @@ export async function exportFigmaImages(
   )
 
   return result
+}
+
+/**
+ * Fetches up to `maxFrames` frames from a Figma file as small base64 PNG thumbnails.
+ * These are sent to the AI via Vision API so it can "see" the actual UI layout.
+ * Uses scale=0.5 (256px-ish) to keep payloads small while preserving visual structure.
+ */
+export async function fetchFrameThumbnailsAsBase64(
+  fileId: string,
+  frameIds: string[],
+  token: string,
+  maxFrames = 6
+): Promise<Array<{ frameId: string; base64: string; mediaType: string }>> {
+  if (!fileId || frameIds.length === 0) return []
+  const limited = frameIds.slice(0, maxFrames)
+  const uniqueIds = [...new Set(limited)]
+  const idsParam = uniqueIds.join(',')
+  let exportRes: Response
+  try {
+    exportRes = await fetch(
+      `https://api.figma.com/v1/images/${fileId}?ids=${idsParam}&format=png&scale=0.5`,
+      { headers: { 'X-Figma-Token': token } }
+    )
+  } catch { return [] }
+  if (!exportRes.ok) return []
+  const exportData = await exportRes.json() as { images?: Record<string, string | null> }
+  if (!exportData.images) return []
+  const entries = Object.entries(exportData.images).filter(([, url]) => Boolean(url)) as [string, string][]
+  const results: Array<{ frameId: string; base64: string; mediaType: string }> = []
+  await Promise.allSettled(
+    entries.map(async ([frameId, url]) => {
+      try {
+        const imgRes = await fetch(url)
+        if (!imgRes.ok) return
+        const buffer = await imgRes.arrayBuffer()
+        const uint8 = new Uint8Array(buffer)
+        // Convert to base64 string compatible with Anthropic Vision API
+        let binary = ''
+        uint8.forEach((byte) => { binary += String.fromCharCode(byte) })
+        const base64 = btoa(binary)
+        results.push({ frameId, base64, mediaType: 'image/png' })
+      } catch { /* skip */ }
+    })
+  )
+  return results
 }
 
 // Fix #9 — robust regex: handles query params, hash, trailing slashes
@@ -462,7 +508,14 @@ export async function streamChat(
     res = await fetch(`${BASE_URL}/api/chat`, {
       method: 'POST',
       headers: authHeaders(anthropicKey),
-      body: JSON.stringify({ messages, figmaContext: effectiveContext, requestId: options.requestId, currentGuideline: options.currentGuideline, language: options.language }),
+      body: JSON.stringify({
+        messages,
+        figmaContext: effectiveContext,
+        requestId: options.requestId,
+        currentGuideline: options.currentGuideline,
+        language: options.language,
+        figmaImages: options.figmaImages,
+      }),
       signal: controller.signal,
     })
   } catch {

@@ -514,12 +514,13 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonResponse({ error: 'Código de acesso inválido. Verifique com o admin da equipe.' }, 401)
     }
 
-    const { messages, figmaContext = '', requestId, currentGuideline, language = 'pt' } = await req.json() as {
+    const { messages, figmaContext = '', requestId, currentGuideline, language = 'pt', figmaImages } = await req.json() as {
       messages: Anthropic.MessageParam[]
       figmaContext?: string
       requestId?: string
-      currentGuideline?: unknown  // guideline previously generated — injected as context in adjust mode
+      currentGuideline?: unknown
       language?: 'pt' | 'es'
+      figmaImages?: Array<{ frameId: string; base64: string; mediaType: string }>
     }
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -540,6 +541,32 @@ export default async function handler(req: Request): Promise<Response> {
       ? requestId.trim()
       : `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const client = new Anthropic({ apiKey })
+
+    // Vision: inject image blocks into the first user message when the client sends thumbnails
+    let visionMessages = compactedMessages
+    if (figmaImages && figmaImages.length > 0 && !currentGuideline) {
+      const imageBlocks: Anthropic.ImageBlockParam[] = figmaImages.map((img) => ({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: img.mediaType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp',
+          data: img.base64,
+        },
+      }))
+      const firstMsg = visionMessages[0]
+      const firstText: string = typeof firstMsg.content === 'string'
+        ? firstMsg.content
+        : (firstMsg.content as Array<{text?: string}>).map(b => b.text ?? '').join(' ')
+      const visionIntro: Anthropic.TextBlockParam = {
+        type: 'text',
+        text: `These are screenshots of the Figma file you will document. Use them to understand the visual layout, hierarchy, colors, and any non-verbal UI states (icons, empty states, errors) that may not be captured in the extracted text context.\n\n${firstText}`,
+      }
+      const combined: Anthropic.MessageParam = {
+        role: 'user',
+        content: [...imageBlocks, visionIntro],
+      }
+      visionMessages = [combined, ...visionMessages.slice(1)]
+    }
 
     const encoder = new TextEncoder()
 

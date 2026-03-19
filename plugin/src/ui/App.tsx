@@ -59,7 +59,7 @@ function copyToClipboardFallback(text: string): void {
   document.body.removeChild(el)
 }
 import type { GuidelineData, Slide, PluginToUI } from '../types'
-import { streamChat, readFigmaFiles, exportFigmaImages, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
+import { streamChat, readFigmaFiles, exportFigmaImages, fetchFrameThumbnailsAsBase64, extractFileId, startFigmaOAuth, pollFigmaToken, startAnthropicOAuth, pollAnthropicKey, type Message } from './claude'
 import { exportToMarkdown } from '../doc-exporter'
 
 function GeneratingIndicator() {
@@ -202,6 +202,7 @@ export default function App() {
   }, [])
 
   const [currentFileKey, setCurrentFileKey] = useState('')
+  const [figmaThumbnails, setFigmaThumbnails] = useState<Array<{ frameId: string; base64: string; mediaType: string }>>([])
 
   useEffect(() => {
     parent.postMessage({ pluginMessage: { type: 'GET_CREDENTIALS' } }, '*')
@@ -437,6 +438,18 @@ export default function App() {
       setFigmaContext(context)
       setMessages([])
       setStep('questions')
+
+      // Vision: silently fetch up to 6 frame thumbnails for visual context
+      const primaryFileId = refId ?? destId!
+      // Extract frame IDs from context heuristically (lines starting with "ID:" or "Frame:")
+      const idMatches = [...context.matchAll(/(?:frame[_\s]?id|frameId|ID)[:\s]+([A-Za-z0-9:_-]{4,40})/gi)]
+      const frameIds = [...new Set(idMatches.map(m => m[1]).filter(Boolean))].slice(0, 6)
+      if (frameIds.length > 0) {
+        fetchFrameThumbnailsAsBase64(primaryFileId, frameIds, figmaToken, 6)
+          .then(thumbs => { if (thumbs.length > 0) setFigmaThumbnails(thumbs) })
+          .catch(() => { /* Vision is best-effort — fail silently */ })
+      }
+
       startChat(context)
     } catch (err) {
       if (analyzeStageTimeoutRef.current) {
@@ -512,8 +525,8 @@ export default function App() {
         setIsGenerating(false)
         setGenerationStage('')
       },
-    }, { requestId, abortSignal: abortController.signal, currentGuideline: undefined, language })
-  }, [anthropicKey, language])
+    }, { requestId, abortSignal: abortController.signal, currentGuideline: undefined, language, figmaImages: figmaThumbnails })
+  }, [anthropicKey, language, figmaThumbnails])
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim() || isStreaming) return
